@@ -752,8 +752,18 @@ def _encode_identifier(v: int) -> str:
     """Encode identifer value into base-94 string."""
     assert v > 0, "identifier codes must be > 0"
     encoded = ""
+    # first char must be in range A-z
+    v -= 1
+    modv = v % 52
+    if modv <= ord('Z') - ord('A'):
+        encoded += chr(ord('A') + modv)
+    else:
+        encoded += chr(modv - ord('Z') + ord('A') + ord('a') - 1)
+    v //= 52
+    # other chars can be from base-94
     while v != 0:
         v -= 1
         encoded += chr((v % 94) + 33)
         v //= 94
     return encoded
+
