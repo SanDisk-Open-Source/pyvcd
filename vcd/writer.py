@@ -632,8 +632,25 @@ class RealVariable(Variable[RealValue]):
         :returns: string representing value change for use in a VCD stream.
 
         """
+
+        value_str = str(value).replace('E', 'e')
+        
+        if 'e' in value_str:
+            mantissa, _ = value_str.split('e')
+        else:
+            mantissa = value_str
+            
+        mantissa = mantissa.replace('-', '').replace('+', '').replace('.', '').strip('0')
+        significant_digits = 0
+        
+        if mantissa:
+            significant_digits = len(mantissa)
+
         if not check or isinstance(value, Number):
-            return f"r{value:.16g} {self.ident}"
+            if significant_digits > 16:
+                return f"r{value:.16g} {self.ident}"
+            else:
+                return f"r{value} {self.ident}"
         else:
             raise ValueError(f"Invalid real value ({value})")
 
