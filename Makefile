@@ -1,55 +1,40 @@
-PYTHON ?= python
-
 .PHONY: lint
-lint: lint-black lint-isort lint-flake8 lint-mypy
+lint: lint-ruff lint-mypy
 
-.PHONY: lint-black
-lint-black:
-	black --check --quiet --diff .
-
-.PHONY: lint-isort
-lint-isort:
-	isort --check-only --quiet --diff .
-
-.PHONY: lint-flake8
-lint-flake8:
-	flake8 .
+.PHONY: lint-ruff
+lint-ruff:
+	uv run --group lint ruff check
+	uv run --group lint ruff format --check
 
 .PHONY: lint-mypy
 lint-mypy:
-	mypy vcd
+	uv run --group type mypy
 
 .PHONY: format
-format: format-black format-isort
-
-.PHONY: format-black
-format-black:
-	black .
-
-.PHONY: format-isort
-format-isort:
-	isort .
+format:
+	uv run --group lint ruff format
+	uv run --group lint ruff check --fix
 
 .PHONY: test
 test:
-	pytest
+	uv run --group test pytest
 
 .PHONY: coverage
 coverage:
-	pytest --cov
+	uv run --group test pytest --cov
 
 .PHONY: benchmark
 benchmark:
-	pytest -vvs -k test_execution_speed
+	uv run --group test pytest -vvs -k test_execution_speed
 
 .PHONY: docs
 docs:
-	$(MAKE) -C docs html
+	$(MAKE) -C docs html SPHINXBUILD="uv run --group docs sphinx-build"
 
 .PHONY: build
 build:
-	$(PYTHON) setup.py build
+	uv build
 
 .PHONY: dist
 dist:
-	$(PYTHON) -m build
+	uv build

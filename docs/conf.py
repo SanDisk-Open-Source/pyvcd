@@ -5,8 +5,7 @@
 
 import os
 import sys
-
-from setuptools_scm import get_version
+from importlib.metadata import version as _version
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -23,8 +22,8 @@ master_doc = "index"
 project = "pyvcd"
 copyright = "2021, Western Digital Corporation"
 author = "Peter Grayson and Steven Sprouse"
-version = get_version(root="..", relative_to=__file__)
-# release = '0.0.1'
+release = _version("pyvcd")
+version = ".".join(release.split(".")[:2])
 language = "en"
 exclude_patterns = ["_build"]
 pygments_style = "sphinx"
