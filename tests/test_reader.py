@@ -75,6 +75,31 @@ def test_parse_scope_decl_with_escaped_identifier():
     assert token.scope.ident == "foo.bar\\"
 
 
+@pytest.mark.parametrize(
+    "ident",
+    [
+        "foobar",
+        "SomeThing.MORE_STUFF_0",
+        "scope_name(432)",  # cva6 core
+        "genblock[3].mod",  # generate loop
+        "uvm_phase::m_wait_for_pred",  # UVM
+        "mem[0][1]",
+        "weird-name#1",
+    ],
+)
+def test_parse_scope_decl_idents(ident):
+    vcd = f"$scope module {ident} $end".encode("ascii")
+    token = next(tokenize(io.BytesIO(vcd)))
+    assert token.scope == ScopeDecl(ScopeType.module, ident)
+
+
+def test_parse_scope_decl_without_ident():
+    tokens = tokenize(io.BytesIO(b"$scope module $end"))
+    with pytest.raises(VCDParseError) as e:
+        next(tokens)
+    assert e.value.args[0].startswith("1:15: Expected scope identifier")
+
+
 def test_parse_var_decl():
     tokens = tokenize(io.BytesIO(b"$var integer 8 ! foo [17] $end"))
     token = next(tokens)
@@ -93,6 +118,62 @@ def test_parse_var_decl_with_parens_in_ref_str():
     tokens = tokenize(io.BytesIO(b"$var integer 8 !! an(ident) $end"))
     token = next(tokens)
     assert token.var.ref_str == "an(ident)"
+
+
+def test_parse_var_decl_from_standard():
+    # The $var example given in IEEE 1800-2023 21.7.2.4, in which the bit
+    # index is not separated from the reference by whitespace.
+    tokens = tokenize(io.BytesIO(b"$var reg 32 (k accumulator[31:0] $end"))
+    token = next(tokens)
+    assert token.var == VarDecl(VarType.reg, 32, "(k", "accumulator", (31, 0))
+
+
+@pytest.mark.parametrize(
+    "ref, reference, bit_index",
+    [
+        ("foo", "foo", None),
+        ("foo [17]", "foo", 17),
+        ("foo[17]", "foo", 17),
+        ("foo [7:0]", "foo", (7, 0)),
+        ("foo[7:0]", "foo", (7, 0)),
+        ("foo [ 3 : 1 ]", "foo", (3, 1)),
+        ("foo[ 3 : 1 ]", "foo", (3, 1)),
+        # A memory word, with and without a bit select, as emitted by verilator.
+        ("mem_array[0]", "mem_array", 0),
+        ("mem_array[0] [177:0]", "mem_array[0]", (177, 0)),
+        ("mem_array[0][177:0]", "mem_array[0]", (177, 0)),
+        ("varname [1423][SOMENAME][2]", "varname[1423][SOMENAME]", 2),
+        ("foo[0][1][2][4:3]", "foo[0][1][2]", (4, 3)),
+        # Nothing that fails to look like a bit index is split off.
+        ("genblock[3].mod.sig", "genblock[3].mod.sig", None),
+        ("uvm_pkg::thing", "uvm_pkg::thing", None),
+        ("foo[x]", "foo[x]", None),
+        ("foo[7:0:1]", "foo[7:0:1]", None),
+        ("foo[]", "foo[]", None),
+        ("[3]", "[3]", None),
+        # Escaped identifiers are opaque, so only a following section counts.
+        ("\\foo[7:0]", "foo[7:0]", None),
+        ("\\mem[0] [7:0]", "mem[0]", (7, 0)),
+    ],
+)
+def test_parse_var_decl_references(ref, reference, bit_index):
+    vcd = f"$var wire 8 ! {ref} $end".encode("ascii")
+    token = next(tokenize(io.BytesIO(vcd)))
+    assert token.var == VarDecl(VarType.wire, 8, "!", reference, bit_index)
+
+
+def test_parse_var_decl_without_ref():
+    tokens = tokenize(io.BytesIO(b"$var wire 1 ! $end"))
+    with pytest.raises(VCDParseError) as e:
+        next(tokens)
+    assert e.value.args[0].startswith("1:15: Expected variable reference")
+
+
+def test_parse_var_decl_with_junk_after_ref():
+    tokens = tokenize(io.BytesIO(b"$var wire 1 ! foo bar $end"))
+    with pytest.raises(VCDParseError) as e:
+        next(tokens)
+    assert e.value.args[0].startswith("1:19: Expected $end")
 
 
 def test_time_change():
@@ -128,6 +209,9 @@ def test_comprehensive(buf_size):
         $upscope $end
         $var real 64 # c_real $end
         $var string 1 $ d_string $end
+        $var wire 8 % e_vector [7:0] $end
+        $var reg 178 & mem_array[0] [177:0] $end
+        $var wire 4 ' f_vector[ 3 : 1 ] $end
         $upscope $end
         $enddefinitions $end
         #0
@@ -163,6 +247,9 @@ def test_comprehensive(buf_size):
     assert next(tokens).kind is TokenKind.UPSCOPE
     assert next(tokens).var == VarDecl(VarType.real, 64, "#", "c_real", None)
     assert next(tokens).var == VarDecl(VarType.string, 1, "$", "d_string", None)
+    assert next(tokens).var == VarDecl(VarType.wire, 8, "%", "e_vector", (7, 0))
+    assert next(tokens).var == VarDecl(VarType.reg, 178, "&", "mem_array[0]", (177, 0))
+    assert next(tokens).var == VarDecl(VarType.wire, 4, "'", "f_vector", (3, 1))
     assert next(tokens).kind is TokenKind.UPSCOPE
     assert next(tokens).kind is TokenKind.ENDDEFINITIONS
     assert next(tokens).time_change == 0

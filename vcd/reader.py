@@ -58,6 +58,7 @@ class VarDecl(NamedTuple):
        $var wire 4 !@# foobar [ 3 : 1 ] $end
        $var real 1 aaa foobar $end
        $var integer 32 > foobar[8] $end
+       $var reg 178 /Y mem_array[0] [177:0] $end
 
     """
 
@@ -79,7 +80,12 @@ class VarDecl(NamedTuple):
     """Optional range of bits to select from the variable.
 
     May select a single bit index, e.g. ``ref [ 3 ]``. Or a range of
-    bits, e.g. from ``ref [ 7 : 3 ]`` (MSB index then LSB index)."""
+    bits, e.g. from ``ref [ 7 : 3 ]`` (MSB index then LSB index).
+
+    Only the final bracketed section of a reference is a candidate bit
+    index, and only when its contents are decimal indices. Any earlier
+    bracketed sections belong to :attr:`reference`, as do brackets
+    within an escaped identifier."""
 
     @property
     def ref_str(self) -> str:
@@ -410,9 +416,6 @@ class _TokenizerState:
             or 97 <= c <= 122  # 'a' - 'z'
             or c == 95  # '_'
             or c == 36  # '$'
-            or c == 46  # '.' not in spec, but seen in the wild
-            or c == 40  # '(' - produced by cva6 core
-            or c == 41  # ')' - produced by cva6 core
         ):
             identifier.append(c)
             c = self.advance(raise_on_eof=False)
@@ -433,28 +436,50 @@ class _TokenizerState:
 
         return identifier
 
-    def take_bit_index(self) -> Union[int, Tuple[int, int]]:
-        self.skip_ws()
-        index0 = self.take_decimal()
-        index1: Optional[int]
+    def take_name_chars(self) -> List[int]:
+        # Whitespace separates a bracketed section from the name it qualifies,
+        # but whitespace within such a section does not end the name, as in
+        # "$var wire 4 ! foo[ 3 : 1 ] $end".
+        chars = []
+        depth = 0
+        c = self.buf[self.pos]
 
-        c = self.skip_ws()
-        if c == 58:  # ':'
-            self.advance()
-            self.skip_ws()
-            index1 = self.take_decimal()
-        else:
-            index1 = None
+        while 33 <= c <= 126 or (depth and _is_ws(c)):
+            if c == 91:  # '['
+                depth += 1
+            elif c == 93 and depth:  # ']'
+                depth -= 1
+            chars.append(c)
+            c = self.advance(raise_on_eof=False)
 
-        c = self.skip_ws()
-        if c == 93:  # ']'
-            self.advance(raise_on_eof=False)
-            if index1 is None:
-                return index0
-            else:
-                return (index0, index1)
+        return chars
+
+    def take_scope_ident(self) -> str:
+        c = self.buf[self.pos]
+        if c == 92:  # '\'
+            return bytes(self.take_escaped_identifier()).decode("ascii")
+        elif c == 36:  # '$'
+            raise VCDParseError(self.loc, "Expected scope identifier")
         else:
-            raise VCDParseError(self.loc, 'Expected bit index to terminate with "]"')
+            return bytes(self.take_name_chars()).decode("ascii")
+
+    def take_var_ref(self) -> Tuple[str, Union[None, int, Tuple[int, int]]]:
+        c = self.buf[self.pos]
+        if c == 92:  # '\'
+            chars = self.take_escaped_identifier()
+            # An escaped identifier is opaque; brackets within it are part of
+            # the name and never a bit index.
+            index_start = len(chars)
+        elif c == 36:  # '$'
+            raise VCDParseError(self.loc, "Expected variable reference")
+        else:
+            chars = self.take_name_chars()
+            index_start = 0
+
+        while self.skip_ws() == 91:  # '['
+            chars.extend(self.take_name_chars())
+
+        return _split_bit_index(bytes(chars).decode("ascii"), index_start)
 
     def take_to_end(self) -> str:
         chars = [
@@ -489,6 +514,44 @@ class _TokenizerState:
 
 def _is_ws(c: int) -> bool:
     return c == 32 or 9 <= c <= 13
+
+
+def _split_bit_index(
+    ref: str, start: int
+) -> Tuple[str, Union[None, int, Tuple[int, int]]]:
+    """Split a trailing bit index from a variable reference.
+
+    Names such as ``mem_array[0]`` are indistinguishable from a bit
+    index, so only the final bracketed section of *ref* is considered,
+    and only from offset *start* onwards. A section is a bit index only
+    if it holds one or two decimal indices; anything else, including an
+    unbalanced bracket, stays part of the reference.
+
+    """
+    if not ref.endswith("]"):
+        return ref, None
+
+    depth = 0
+    for open_pos in range(len(ref) - 1, start - 1, -1):
+        if ref[open_pos] == "]":
+            depth += 1
+        elif ref[open_pos] == "[":
+            depth -= 1
+            if not depth:
+                break
+    else:
+        return ref, None
+
+    if open_pos == 0:  # A reference is never empty
+        return ref, None
+
+    indices = [index.strip() for index in ref[open_pos + 1 : -1].split(":")]
+    if len(indices) > 2 or not all(index.isdigit() for index in indices):
+        return ref, None
+    elif len(indices) == 1:
+        return ref[:open_pos], int(indices[0])
+    else:
+        return ref[:open_pos], (int(indices[0]), int(indices[1]))
 
 
 def _parse_token(s: _TokenizerState) -> Token:
@@ -602,7 +665,7 @@ def _parse_token(s: _TokenizerState) -> Token:
 
             s.skip_ws()
 
-            scope_ident = s.take_identifier()
+            scope_ident = s.take_scope_ident()
 
             s.take_end()
 
@@ -662,18 +725,10 @@ def _parse_token(s: _TokenizerState) -> Token:
             s.skip_ws()
             id_code = s.take_id_code()
             s.skip_ws()
-            ident = s.take_identifier()
-
-            bit_index: Union[None, int, Tuple[int, int]]
-            c = s.skip_ws()
-            if c == 91:  # '['
-                s.advance()
-                bit_index = s.take_bit_index()
-            else:
-                bit_index = None
+            reference, bit_index = s.take_var_ref()
 
             s.take_end()
-            var_decl = VarDecl(type_, size, id_code, ident, bit_index)
+            var_decl = VarDecl(type_, size, id_code, reference, bit_index)
             return Token(TokenKind.VAR, s.span(start), var_decl)
         elif kw == "version":
             s.take_ws_after_kw(kw)
