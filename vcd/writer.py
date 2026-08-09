@@ -228,9 +228,12 @@ class VCDWriter:
                 raise ValueError("vector init value must be int, bool, str, or None")
             var = VectorVariable(ident, var_type, size, init)
 
-        var.format_value(init, check=True)
+        # The branches above narrow init to suit the variable they construct,
+        # but that correspondence is not visible to a type checker, so validate
+        # through the value the variable is holding rather than through init.
+        var._check_value()
 
-        # Only alter state after format_value() succeeds
+        # Only alter state after the init value is known to be valid
         self._vars.append(var)
         self._next_var_id += 1
         self._scope_var_strs.setdefault(scope_tuple, []).append(var_str)
@@ -520,6 +523,9 @@ class Variable(Generic[ValueType]):
     def format_value(self, value: ValueType, check: bool = True) -> str:
         """Format value change for use in VCD stream."""
         raise NotImplementedError
+
+    def _check_value(self) -> None:
+        self.format_value(self.value, check=True)
 
     def dump(self, check: bool = True) -> Optional[str]:
         return self.format_value(self.value, check)
