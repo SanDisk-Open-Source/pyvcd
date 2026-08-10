@@ -801,9 +801,8 @@ def test_vcd_dump_off_time_order(capsys):
 
 
 def test_variable():
-    var = Variable("ident0", "integer", 16, 0)
-    with pytest.raises(NotImplementedError):
-        var.format_value(0)
+    with pytest.raises(TypeError):
+        Variable("ident0", "integer", 16, 0)
 
 
 @pytest.mark.parametrize(

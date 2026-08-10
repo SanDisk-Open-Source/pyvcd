@@ -6,6 +6,7 @@ This module provides :class:`VCDWriter` for writing VCD files.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
 from datetime import datetime
 from itertools import zip_longest
@@ -492,7 +493,7 @@ class VCDWriter:
 ValueType = TypeVar("ValueType")
 
 
-class Variable(Generic[ValueType]):
+class Variable(ABC, Generic[ValueType]):
     """VCD variable details needed to call :meth:`VCDWriter.change()`."""
 
     __slots__ = ("ident", "type", "size", "value")
@@ -507,9 +508,9 @@ class Variable(Generic[ValueType]):
         #: Last value of variable.
         self.value = init
 
+    @abstractmethod
     def format_value(self, value: ValueType, check: bool = True) -> str:
         """Format value change for use in VCD stream."""
-        raise NotImplementedError
 
     def _check_value(self) -> None:
         _ = self.format_value(self.value, check=True)
