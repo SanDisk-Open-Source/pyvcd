@@ -83,7 +83,7 @@ files = ["src/vcd"]
 python_version = "3.10"
 
 [tool.basedpyright]
-include = ["src/vcd"]
+include = ["src/vcd", "tests"]
 pythonVersion = "3.10"
 # Variable is generic in its value type; code handling variables of every type
 # has to name that.

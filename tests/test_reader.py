@@ -40,7 +40,7 @@ def test_parse_date():
 def test_parse_date_with_bad_end():
     tokens = tokenize(io.BytesIO(b"$date\nnow!!!$end"))
     with pytest.raises(VCDParseError) as e:
-        next(tokens)
+        _ = next(tokens)
     assert str(e.value).startswith("2:6: ")
 
 
@@ -57,8 +57,8 @@ def test_parse_junk_in_enddefinitions():
     token = next(tokens)
     assert token.comment == "hi"
     with pytest.raises(VCDParseError) as e:
-        next(tokens)
-    assert e.value.args[0].startswith("1:35: Expected $end")
+        _ = next(tokens)
+    assert str(e.value).startswith("1:35: Expected $end")
 
 
 def test_parse_scope_decl():
@@ -87,7 +87,7 @@ def test_parse_scope_decl_with_escaped_identifier():
         "weird-name#1",
     ],
 )
-def test_parse_scope_decl_idents(ident):
+def test_parse_scope_decl_idents(ident: str) -> None:
     vcd = f"$scope module {ident} $end".encode("ascii")
     token = next(tokenize(io.BytesIO(vcd)))
     assert token.scope == ScopeDecl(ScopeType.module, ident)
@@ -96,8 +96,8 @@ def test_parse_scope_decl_idents(ident):
 def test_parse_scope_decl_without_ident():
     tokens = tokenize(io.BytesIO(b"$scope module $end"))
     with pytest.raises(VCDParseError) as e:
-        next(tokens)
-    assert e.value.args[0].startswith("1:15: Expected scope identifier")
+        _ = next(tokens)
+    assert str(e.value).startswith("1:15: Expected scope identifier")
 
 
 def test_parse_var_decl():
@@ -156,7 +156,9 @@ def test_parse_var_decl_from_standard():
         ("\\mem[0] [7:0]", "mem[0]", (7, 0)),
     ],
 )
-def test_parse_var_decl_references(ref, reference, bit_index):
+def test_parse_var_decl_references(
+    ref: str, reference: str, bit_index: None | int | tuple[int, int]
+) -> None:
     vcd = f"$var wire 8 ! {ref} $end".encode("ascii")
     token = next(tokenize(io.BytesIO(vcd)))
     assert token.var == VarDecl(VarType.wire, 8, "!", reference, bit_index)
@@ -165,15 +167,15 @@ def test_parse_var_decl_references(ref, reference, bit_index):
 def test_parse_var_decl_without_ref():
     tokens = tokenize(io.BytesIO(b"$var wire 1 ! $end"))
     with pytest.raises(VCDParseError) as e:
-        next(tokens)
-    assert e.value.args[0].startswith("1:15: Expected variable reference")
+        _ = next(tokens)
+    assert str(e.value).startswith("1:15: Expected variable reference")
 
 
 def test_parse_var_decl_with_junk_after_ref():
     tokens = tokenize(io.BytesIO(b"$var wire 1 ! foo bar $end"))
     with pytest.raises(VCDParseError) as e:
-        next(tokens)
-    assert e.value.args[0].startswith("1:19: Expected $end")
+        _ = next(tokens)
+    assert str(e.value).startswith("1:19: Expected $end")
 
 
 def test_time_change():
@@ -197,7 +199,7 @@ def test_vector_change():
 
 
 @pytest.mark.parametrize("buf_size", range(1, 400))
-def test_comprehensive(buf_size):
+def test_comprehensive(buf_size: int) -> None:
     vcd = """\
         $comment Test VCD $end
         $date the present day $end
@@ -269,4 +271,4 @@ def test_comprehensive(buf_size):
     assert next(tokens).string_change == StringChange("$", "bye")
     assert next(tokens).comment == "Fin."
     with pytest.raises(StopIteration):
-        next(tokens)
+        _ = next(tokens)

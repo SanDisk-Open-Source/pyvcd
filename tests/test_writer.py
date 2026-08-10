@@ -6,10 +6,12 @@ import timeit
 
 import pytest
 
-from vcd.common import Timescale, TimescaleMagnitude, TimescaleUnit
+from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
 from vcd.writer import (
+    CompoundSize,
+    CompoundValue,
     CompoundVectorVariable,
-    ScopeType,
+    TimescaleLike,
     Variable,
     VCDPhaseError,
     VCDWriter,
@@ -17,14 +19,14 @@ from vcd.writer import (
 )
 
 
-def split_lines(capsys):
+def split_lines(capsys: pytest.CaptureFixture[str]):
     return capsys.readouterr()[0].splitlines()
 
 
-def test_vcd_init(capsys):
-    VCDWriter(sys.stdout, date="today")
+def test_vcd_init():
+    _ = VCDWriter(sys.stdout, date="today")
     with pytest.raises(ValueError):
-        VCDWriter(sys.stdout, default_scope_type="InVaLiD")
+        _ = VCDWriter(sys.stdout, default_scope_type="InVaLiD")
 
 
 @pytest.mark.parametrize(
@@ -38,7 +40,9 @@ def test_vcd_init(capsys):
         (Timescale(TimescaleMagnitude.hundred, TimescaleUnit.millisecond), "100 ms"),
     ],
 )
-def test_vcd_timescales(capsys, timescale, expected):
+def test_vcd_timescales(
+    capsys: pytest.CaptureFixture[str], timescale: TimescaleLike, expected: str
+) -> None:
     with VCDWriter(sys.stdout, date="", timescale=timescale):
         pass
     lines = split_lines(capsys)
@@ -56,24 +60,25 @@ def test_vcd_timescales(capsys, timescale, expected):
         (100, TypeError),
     ],
 )
-def test_vcd_timescale_invalid(capsys, timescale, exc_type):
+# The invalid arguments below are the subject of these tests.
+def test_vcd_timescale_invalid(timescale: object, exc_type: type[Exception]) -> None:
     with pytest.raises(exc_type):
-        VCDWriter(sys.stdout, timescale=timescale)
+        _ = VCDWriter(sys.stdout, timescale=timescale)  # pyright: ignore[reportArgumentType]
 
 
-def test_vcd_init_empty_date(capsys):
+def test_vcd_init_empty_date(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date=""):
         pass
     assert "$date" not in capsys.readouterr()[0]
 
 
-def test_vcd_init_none_date(capsys):
+def test_vcd_init_none_date(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date=None):
         pass
     assert "$date" in capsys.readouterr()[0]
 
 
-def test_vcd_flush(capsys):
+def test_vcd_flush(capsys: pytest.CaptureFixture[str]):
     vcd = VCDWriter(sys.stdout, date="today")
     assert not split_lines(capsys)
     vcd.flush(17)
@@ -81,19 +86,19 @@ def test_vcd_flush(capsys):
     assert lines[-1] == "#17"
 
 
-def test_vcd_close(capsys):
+def test_vcd_close(capsys: pytest.CaptureFixture[str]):
     vcd = VCDWriter(sys.stdout, date="")
     assert not split_lines(capsys)
     vcd.close()
     lines = split_lines(capsys)
     assert lines == ["$timescale 1 us $end", "$enddefinitions $end"]
     with pytest.raises(VCDPhaseError):
-        vcd.register_var("a", "b", "integer")
+        _ = vcd.register_var("a", "b", "integer")
     vcd.close()  # Idempotency test
     assert not split_lines(capsys)
 
 
-def test_vcd_change_after_close(capsys):
+def test_vcd_change_after_close(capsys: pytest.CaptureFixture[str]):
     vcd = VCDWriter(sys.stdout, date="")
     var = vcd.register_var("a", "b", "integer")
     assert not split_lines(capsys)
@@ -104,7 +109,7 @@ def test_vcd_change_after_close(capsys):
         vcd.flush()
 
 
-def test_vcd_alias_after_close(capsys):
+def test_vcd_alias_after_close(capsys: pytest.CaptureFixture[str]):
     vcd = VCDWriter(sys.stdout)
     var = vcd.register_var("a", "b", "integer")
     assert not split_lines(capsys)
@@ -113,7 +118,7 @@ def test_vcd_alias_after_close(capsys):
         vcd.register_alias("c", "d", var)
 
 
-def test_vcd_no_scopes(capsys):
+def test_vcd_no_scopes(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today", version="some\nversion", comment="hello"):
         pass
     lines = split_lines(capsys)
@@ -130,7 +135,7 @@ def test_vcd_no_scopes(capsys):
     assert expected_lines == lines
 
 
-def test_vcd_one_var(capsys):
+def test_vcd_one_var(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         var = vcd.register_var("sss", "nnn", "integer", 32)
         vcd.change(var, 0, 0)
@@ -143,12 +148,12 @@ def test_vcd_one_var(capsys):
 def test_vcd_invalid_vector_init():
     with VCDWriter(sys.stdout) as vcd:
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "a", "integer", 8, init="eight")
+            _ = vcd.register_var("scope", "a", "integer", 8, init="eight")
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "b", "integer", 8, init=8.0)
+            _ = vcd.register_var("scope", "b", "integer", 8, init=8.0)
 
 
-def test_vcd_no_duplicates(capsys):
+def test_vcd_no_duplicates(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         var = vcd.register_var("sss", "nnn", "integer", 32)
         vcd.change(var, 0, "x")
@@ -178,7 +183,7 @@ def test_vcd_no_duplicates(capsys):
     ]
 
 
-def test_vcd_aliases(capsys):
+def test_vcd_aliases(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         var = vcd.register_var("sss", "nnn", "integer", 32)
         vcd.register_alias("sss", "mmm", var)
@@ -208,18 +213,18 @@ def test_vcd_aliases(capsys):
     ]
 
 
-def test_vcd_scopes(capsys):
+def test_vcd_scopes(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         vcd.set_scope_type("eee.fff.ggg", ScopeType.task)
-        vcd.register_var("aaa.bbb", "nn0", "integer", 8, init="z")
-        vcd.register_var("aaa.bbb", "nn1", "integer", 8)
-        vcd.register_var("aaa", "nn2", "integer", 8)
-        vcd.register_var("aaa.bbb.ccc", "nn3", "integer", 8)
-        vcd.register_var("aaa.bbb.ddd", "nn4", "integer", 8)
-        vcd.register_var("eee.fff.ggg", "nn5", "integer", 8)
+        _ = vcd.register_var("aaa.bbb", "nn0", "integer", 8, init="z")
+        _ = vcd.register_var("aaa.bbb", "nn1", "integer", 8)
+        _ = vcd.register_var("aaa", "nn2", "integer", 8)
+        _ = vcd.register_var("aaa.bbb.ccc", "nn3", "integer", 8)
+        _ = vcd.register_var("aaa.bbb.ddd", "nn4", "integer", 8)
+        _ = vcd.register_var("eee.fff.ggg", "nn5", "integer", 8)
         vcd.set_scope_type("aaa.bbb", "fork")
         with pytest.raises(TypeError):
-            vcd.set_scope_type({"a", "b", "c"}, "module")
+            vcd.set_scope_type({"a", "b", "c"}, "module")  # pyright: ignore[reportArgumentType]
 
     expected_lines = [
         "$date",
@@ -260,9 +265,9 @@ def test_vcd_scopes(capsys):
         assert line.startswith(expected)
 
 
-def test_vcd_init_timestamp(capsys):
+def test_vcd_init_timestamp(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today", init_timestamp=123) as vcd:
-        vcd.register_var("a", "n", "integer", 8, init="z")
+        _ = vcd.register_var("a", "n", "integer", 8, init="z")
 
     expected_lines = [
         "$date",
@@ -281,11 +286,11 @@ def test_vcd_init_timestamp(capsys):
         assert line.startswith(expected)
 
 
-def test_vcd_scope_tuple(capsys):
+def test_vcd_scope_tuple(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
-        vcd.register_var(("aaa",), "nn0", "integer", 8)
-        vcd.register_var(("aaa", "bbb"), "nn1", "integer", 8)
-        vcd.register_var("aaa.bbb.ccc", "nn2", "integer", 8)
+        _ = vcd.register_var(("aaa",), "nn0", "integer", 8)
+        _ = vcd.register_var(("aaa", "bbb"), "nn1", "integer", 8)
+        _ = vcd.register_var("aaa.bbb.ccc", "nn2", "integer", 8)
     lines = split_lines(capsys)
     for line, expected in zip(
         lines,
@@ -303,21 +308,21 @@ def test_vcd_scope_tuple(capsys):
         assert line.startswith(expected)
 
 
-def test_vcd_late_registration(capsys):
+def test_vcd_late_registration():
     with VCDWriter(sys.stdout, date="today") as vcd:
         var0 = vcd.register_var("aaa.bbb", "nn0", "integer", 8)
         vcd.change(var0, 0, 123)
 
         # Still at t0, registration okay...
-        vcd.register_var("aaa.bbb", "nn1", "integer", 8)
+        _ = vcd.register_var("aaa.bbb", "nn1", "integer", 8)
 
         vcd.change(var0, 1, 210)
 
         with pytest.raises(VCDPhaseError):
-            vcd.register_var("aaa.bbb", "nn2", "integer", 8)
+            _ = vcd.register_var("aaa.bbb", "nn2", "integer", 8)
 
 
-def test_vcd_late_alias_registration(capsys):
+def test_vcd_late_alias_registration():
     with VCDWriter(sys.stdout, date="today") as vcd:
         var0 = vcd.register_var("aaa.bbb", "nn0", "integer", 8)
         vcd.change(var0, 0, 123)
@@ -331,32 +336,32 @@ def test_vcd_late_alias_registration(capsys):
             vcd.register_alias("aaa.bbb", "nn2", var0)
 
 
-def test_vcd_missing_size(capsys):
+def test_vcd_missing_size():
     with VCDWriter(sys.stdout, date="today") as vcd:
         with pytest.raises(ValueError):
-            vcd.register_var("a.b.c", "name", "wire", size=None)
+            _ = vcd.register_var("a.b.c", "name", "wire", size=None)
 
 
-def test_vcd_invalid_var_type(capsys):
+def test_vcd_invalid_var_type():
     with VCDWriter(sys.stdout, date="today") as vcd:
         with pytest.raises(ValueError):
-            vcd.register_var("aaa.bbb", "nn0", "InVaLiD", 8)
+            _ = vcd.register_var("aaa.bbb", "nn0", "InVaLiD", 8)
 
 
-def test_vcd_invalid_scope_type(capsys):
+def test_vcd_invalid_scope_type():
     with VCDWriter(sys.stdout, date="today") as vcd:
         with pytest.raises(ValueError):
             vcd.set_scope_type("aaa.bbb", "InVaLiD")
 
 
-def test_vcd_duplicate_var_name(capsys):
+def test_vcd_duplicate_var_name():
     with VCDWriter(sys.stdout, date="today") as vcd:
-        vcd.register_var("aaa.bbb", "nn0", "integer", 8)
+        _ = vcd.register_var("aaa.bbb", "nn0", "integer", 8)
         with pytest.raises(KeyError):
-            vcd.register_var("aaa.bbb", "nn0", "wire", 1)
+            _ = vcd.register_var("aaa.bbb", "nn0", "wire", 1)
 
 
-def test_vcd_duplicate_alias(capsys):
+def test_vcd_duplicate_alias():
     with VCDWriter(sys.stdout, date="today") as vcd:
         var = vcd.register_var("aaa.bbb", "nn0", "integer", 8)
         vcd.register_alias("aaa.bbb", "nn1", var)
@@ -366,7 +371,7 @@ def test_vcd_duplicate_alias(capsys):
             vcd.register_alias("aaa.bbb", "nn1", var)
 
 
-def test_vcd_change_out_of_order(capsys):
+def test_vcd_change_out_of_order():
     with VCDWriter(sys.stdout, date="") as vcd:
         var = vcd.register_var("scope", "a", "wire", 1)
         vcd.change(var, 3, True)
@@ -374,17 +379,17 @@ def test_vcd_change_out_of_order(capsys):
             vcd.change(var, 1, False)
 
 
-def test_vcd_register_int(capsys):
+def test_vcd_register_int(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
-        vcd.register_var("scope", "a", "integer")
+        _ = vcd.register_var("scope", "a", "integer")
     out = capsys.readouterr()[0]
     assert "$var integer 64 ! a $end" in out
     assert "bx !" in out
 
 
-def test_vcd_register_int_tuple(capsys):
+def test_vcd_register_int_tuple(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
-        vcd.register_var("scope", "a", "integer", (8, 4, 1))
+        _ = vcd.register_var("scope", "a", "integer", (8, 4, 1))
     out = capsys.readouterr()[0]
     assert "$var integer 13 ! a $end" in out
     assert "bx !" in out
@@ -393,28 +398,28 @@ def test_vcd_register_int_tuple(capsys):
 def test_vcd_register_int_tuple_invalid_init_type():
     with VCDWriter(sys.stdout, date="") as vcd:
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "a", "integer", (8, 4, 1), 0)
+            _ = vcd.register_var("scope", "a", "integer", (8, 4, 1), 0)
 
 
 def test_vcd_register_int_tuple_invalid_init_len():
     with VCDWriter(sys.stdout, date="") as vcd:
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "a", "integer", (8, 4, 1), (0, 0, 0, 0))
+            _ = vcd.register_var("scope", "a", "integer", (8, 4, 1), (0, 0, 0, 0))
 
 
 def test_vcd_register_int_tuple_invalid_init_values():
     with VCDWriter(sys.stdout, date="") as vcd:
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "a", "integer", (8, 4, 1), (1.0, 0, 0))
+            _ = vcd.register_var("scope", "a", "integer", (8, 4, 1), (1.0, 0, 0))  # pyright: ignore[reportArgumentType]
 
 
-def test_vcd_register_real(capsys):
+def test_vcd_register_real(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
-        vcd.register_var("scope", "a", "real")
-        vcd.register_var("scope", "b", "real", init=123)
-        vcd.register_var("scope", "c", "real", init=1.23)
+        _ = vcd.register_var("scope", "a", "real")
+        _ = vcd.register_var("scope", "b", "real", init=123)
+        _ = vcd.register_var("scope", "c", "real", init=1.23)
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "f", "real", init="real")
+            _ = vcd.register_var("scope", "f", "real", init="real")
 
     expected_last = [
         "$scope module scope $end",
@@ -434,12 +439,12 @@ def test_vcd_register_real(capsys):
     assert lines[-len(expected_last) :] == expected_last
 
 
-def test_vcd_register_event(capsys):
+def test_vcd_register_event(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
-        vcd.register_var("scope", "a", "event")
-        vcd.register_var("scope", "b", "event", init=True)
+        _ = vcd.register_var("scope", "a", "event")
+        _ = vcd.register_var("scope", "b", "event", init=True)
         with pytest.raises(ValueError):
-            vcd.register_var("scope", "f", "event", init="yes")
+            _ = vcd.register_var("scope", "f", "event", init="yes")
     expected_last = [
         "$scope module scope $end",
         "$var event 1 ! a $end",
@@ -462,7 +467,7 @@ def test_vcd_bad_event():
             vcd.change(var, 2, False)
 
 
-def test_vcd_multiple_events(capsys):
+def test_vcd_multiple_events(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
         var = vcd.register_var("scope", "a", "event")
         vcd.change(var, 1, True)
@@ -493,12 +498,12 @@ def test_vcd_multiple_events(capsys):
     assert expected_lines == split_lines(capsys)
 
 
-def test_vcd_scalar_var(capsys):
+def test_vcd_scalar_var(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("aaa", "nn0", "integer", 1)
-        vcd.register_var("aaa", "nn1", "integer", 1, False)
+        _ = vcd.register_var("aaa", "nn1", "integer", 1, False)
         with pytest.raises(ValueError):
-            vcd.register_var("aaa", "fff", "integer", 1, init=1.23)
+            _ = vcd.register_var("aaa", "fff", "integer", 1, init=1.23)
         vcd.change(v0, 1, True)
         vcd.change(v0, 2, False)
         vcd.change(v0, 3, "z")
@@ -534,7 +539,7 @@ def test_vcd_scalar_var(capsys):
     assert lines[-len(expected) :] == expected
 
 
-def test_vcd_real_var(capsys):
+def test_vcd_real_var(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("aaa", "nn0", "real", 32)
         v1 = vcd.register_var("aaa", "nn1", "real", 64)
@@ -566,7 +571,7 @@ def test_vcd_real_var(capsys):
     assert lines[-len(expected_last) :] == expected_last
 
 
-def test_vcd_integer_var(capsys):
+def test_vcd_integer_var(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("aaa", "nn0", "integer", 16)
         v1 = vcd.register_var("aaa", "nn1", "integer", 8)
@@ -599,7 +604,7 @@ def test_vcd_integer_var(capsys):
     assert lines[-len(expected_last) :] == expected_last
 
 
-def test_vcd_dump_on_no_op(capsys):
+def test_vcd_dump_on_no_op(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("scope", "a", "integer", 8)
         vcd.dump_on(0)  # Should be a no-op
@@ -624,7 +629,7 @@ def test_vcd_dump_on_no_op(capsys):
     assert expected_lines == split_lines(capsys)
 
 
-def test_vcd_dump_off_early(capsys):
+def test_vcd_dump_off_early(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("scope", "a", "integer", 8, init=7)
         vcd.dump_off(0)
@@ -657,7 +662,7 @@ def test_vcd_dump_off_early(capsys):
     assert expected_lines == split_lines(capsys)
 
 
-def test_vcd_dump_off_real(capsys):
+def test_vcd_dump_off_real(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
         v0 = vcd.register_var("scope", "a", "real")
         vcd.change(v0, 1, 1.0)
@@ -694,7 +699,7 @@ def test_vcd_dump_off_real(capsys):
     assert expected_lines == split_lines(capsys)
 
 
-def test_vcd_dump_off_on(capsys):
+def test_vcd_dump_off_on(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("scope", "a", "integer", 8)
         v1 = vcd.register_var("scope", "b", "wire", 1)
@@ -769,7 +774,7 @@ def test_vcd_dump_off_on(capsys):
     assert expected_lines == split_lines(capsys)
 
 
-def test_vcd_dump_off_time_order(capsys):
+def test_vcd_dump_off_time_order(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("scope", "a", "integer", 8)
         vcd.dump_off(1)
@@ -777,7 +782,7 @@ def test_vcd_dump_off_time_order(capsys):
         with pytest.raises(VCDPhaseError):
             vcd.dump_off(0)
 
-        assert v0.value == "x"
+        assert v0.value == "x"  # pyright: ignore[reportAny]
         vcd.change(v0, 1, 10)
 
     expected_lines = [
@@ -802,7 +807,7 @@ def test_vcd_dump_off_time_order(capsys):
 
 def test_variable():
     with pytest.raises(TypeError):
-        Variable("ident0", "integer", 16, 0)
+        _ = Variable("ident0", VarType.integer, 16, 0)  # pyright: ignore[reportAbstractUsage]
 
 
 @pytest.mark.parametrize(
@@ -818,20 +823,20 @@ def test_variable():
         ("b111 v", 7, -1),
     ],
 )
-def test_vector_var_3bit(expected, unsigned, signed):
-    var = VectorVariable("v", "integer", 3, unsigned)
+def test_vector_var_3bit(expected: str, unsigned: int, signed: int) -> None:
+    var = VectorVariable("v", VarType.integer, 3, unsigned)
     assert expected == var.format_value(unsigned)
     assert expected == var.format_value(signed)
 
 
 def test_vector_var_3bit_invalid():
-    var = VectorVariable("v", "integer", 3, 0)
+    var = VectorVariable("v", VarType.integer, 3, 0)
 
     with pytest.raises(ValueError):
-        var.format_value(8)
+        _ = var.format_value(8)
 
     with pytest.raises(ValueError):
-        var.format_value(-5)
+        _ = var.format_value(-5)
 
 
 @pytest.mark.parametrize(
@@ -849,28 +854,34 @@ def test_vector_var_3bit_invalid():
         ((8, 32), (0b1010, 0xFF00FF00), "b101011111111000000001111111100000000 v"),
     ],
 )
-def test_compound_vector(size, value, expected):
-    var = CompoundVectorVariable("v", "integer", size, value)
+def test_compound_vector(
+    size: CompoundSize, value: CompoundValue, expected: str
+) -> None:
+    var = CompoundVectorVariable("v", VarType.integer, size, value)
     assert expected == var.format_value(value)
 
 
 @pytest.mark.parametrize(
     "size, value", [((1, 2, 3), (0, 0)), ((1, 2, 3), (0, 0, 0, 0)), ((1,), (0, 0))]
 )
-def test_compound_vector_invalid_values(size, value):
-    var = CompoundVectorVariable("v", "integer", size, None)
+def test_compound_vector_invalid_values(
+    size: CompoundSize, value: CompoundValue
+) -> None:
+    var = CompoundVectorVariable("v", VarType.integer, size, ())
     with pytest.raises(ValueError):
-        var.format_value(value)
+        _ = var.format_value(value)
 
 
-def test_dump_off_compound_vector(capsys):
+def test_dump_off_compound_vector(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout) as vcd:
         v0 = vcd.register_var("aaa", "n0", "integer", size=(4, 4, 8), init=None)
-        vcd.register_var("aaa", "n1", "integer", size=(4, 4, 8), init=("z", "x", "-"))
-        vcd.register_var("aaa", "n2", "integer", size=(1, 1), init=(True, False))
+        _ = vcd.register_var(
+            "aaa", "n1", "integer", size=(4, 4, 8), init=("z", "x", "-")
+        )
+        _ = vcd.register_var("aaa", "n2", "integer", size=(1, 1), init=(True, False))
         v3 = vcd.register_var("aaa", "n3", "integer", size=(1, 2, 3), init="xxx")
         with pytest.raises(ValueError):
-            vcd.register_var("aaa", "n4", "integer", size=(1, 2, 3), init=(1, 2))
+            _ = vcd.register_var("aaa", "n4", "integer", size=(1, 2, 3), init=(1, 2))
         vcd.change(v0, 1, (0, 0, 0))
         vcd.change(v0, 2, (15, 0, 0xFF))
         vcd.dump_off(3)
@@ -913,12 +924,12 @@ def test_dump_off_compound_vector(capsys):
     assert expected == lines[-len(expected) :]
 
 
-def test_vcd_string_var(capsys):
+def test_vcd_string_var(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         v0 = vcd.register_var("aaa", "nn0", "string")
-        vcd.register_var("aaa", "nn1", "string", init="foobar")
+        _ = vcd.register_var("aaa", "nn1", "string", init="foobar")
         with pytest.raises(ValueError):
-            vcd.register_var("aaa", "fff", "string", init=123)
+            _ = vcd.register_var("aaa", "fff", "string", init=123)
         vcd.change(v0, 1, "hello")
         vcd.change(v0, 2, "")
         vcd.change(v0, 3, "world")
