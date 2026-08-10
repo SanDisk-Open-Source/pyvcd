@@ -6,6 +6,7 @@ This module provides :class:`VCDWriter` for writing VCD files.
 
 from __future__ import annotations
 
+import sys
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
 from datetime import datetime
@@ -13,6 +14,11 @@ from itertools import zip_longest
 from numbers import Number
 from types import TracebackType
 from typing import IO, Any, Generic, TypeVar
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
 
@@ -531,6 +537,7 @@ class ScalarVariable(Variable[ScalarValue]):
 
     __slots__ = ()
 
+    @override
     def format_value(self, value: ScalarValue, check: bool = True) -> str:
         """Format scalar value change for VCD stream.
 
@@ -551,6 +558,7 @@ class ScalarVariable(Variable[ScalarValue]):
         else:
             return "0" + self.ident
 
+    @override
     def dump_off(self) -> str:
         return "x" + self.ident
 
@@ -562,12 +570,14 @@ class EventVariable(Variable[EventValue]):
 
     """
 
+    @override
     def format_value(self, value: EventValue, check: bool = True) -> str:
         if value:
             return "1" + self.ident
         else:
             raise ValueError("Invalid event value")
 
+    @override
     def dump(self, check: bool = True) -> str | None:
         return None
 
@@ -582,6 +592,7 @@ class StringVariable(Variable[StringValue]):
 
     __slots__ = ()
 
+    @override
     def format_value(self, value: StringValue, check: bool = True) -> str:
         """Format scalar value change for VCD stream.
 
@@ -617,6 +628,7 @@ class RealVariable(Variable[RealValue]):
 
     __slots__ = ()
 
+    @override
     def format_value(self, value: RealValue, check: bool = True) -> str:
         """Format real value change for VCD stream.
 
@@ -644,6 +656,7 @@ class VectorVariable(Variable[ScalarValue]):
 
     size: int
 
+    @override
     def format_value(self, value: ScalarValue, check: bool = True) -> str:
         """Format value change for VCD stream.
 
@@ -664,6 +677,7 @@ class VectorVariable(Variable[ScalarValue]):
         value_str = _format_scalar_value(value, self.size, check)
         return f"b{value_str} {self.ident}"
 
+    @override
     def dump_off(self) -> str:
         return self.format_value("x", check=False)
 
@@ -680,6 +694,7 @@ class CompoundVectorVariable(Variable[CompoundValue]):
 
     size: CompoundSize
 
+    @override
     def format_value(self, value: CompoundValue, check: bool = True) -> str:
         """Format value change for VCD stream.
 
@@ -718,6 +733,7 @@ class CompoundVectorVariable(Variable[CompoundValue]):
         value_str = "".join(vstr_list)
         return f"b{value_str} {self.ident}"
 
+    @override
     def dump_off(self) -> str:
         return self.format_value(tuple("x" * len(self.size)), check=False)
 

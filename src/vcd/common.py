@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import sys
 from enum import Enum
 from typing import NamedTuple
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 
 class ScopeType(Enum):
@@ -38,6 +44,7 @@ class VarType(Enum):
     string = "string"
     logic = "logic"
 
+    @override
     def __str__(self) -> str:
         return self.value
 
@@ -84,5 +91,6 @@ class Timescale(NamedTuple):
                 raise ValueError(f"Invalid timescale magnitude {s!r}")
         return Timescale(mag, unit)
 
+    @override
     def __str__(self) -> str:
         return f"{self.magnitude.value} {self.unit.value}"

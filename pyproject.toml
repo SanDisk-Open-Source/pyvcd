@@ -9,7 +9,9 @@ authors = [
 license = "MIT"
 license-files = ["LICENSE.txt"]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    'typing_extensions; python_version < "3.12"',
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
