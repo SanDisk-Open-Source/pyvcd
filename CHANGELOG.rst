@@ -1,6 +1,16 @@
 Changelog
 =========
 
+pyvcd-0.4.2 (2026-08-09)
+------------------------
+* fix: accept special characters in reader scope and variable names (#22, #35)
+* fix: take a variable's bit index from the final bracketed section of its
+  reference (#22)
+* build: remove deprecated packaging metadata (#42)
+* docs: official support for Python 3.14
+* docs: cite IEEE 1800-2023 for the VCD specification
+* docs: project moved back to the SanDisk-Open-Source organization
+
 pyvcd-0.4.1 (2024-11-10)
 ------------------------
 * feat: support escaped identifiers (#27)
