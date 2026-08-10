@@ -4,8 +4,10 @@ import sys
 from enum import Enum
 from typing import NamedTuple
 
+# The checker is configured for the oldest supported version, so it sees only
+# one side of this.
 if sys.version_info >= (3, 12):
-    from typing import override
+    from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
 

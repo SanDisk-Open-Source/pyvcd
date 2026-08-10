@@ -160,7 +160,7 @@ class GTKWSave:
                 assert isinstance(color, GTKWColor)
 
             if color == GTKWColor.cycle:
-                self._color_stack[-1] = self._color_stack[-1]._cycle()
+                self._color_stack[-1] = self._color_stack[-1]._cycle()  # pyright: ignore[reportPrivateUsage]
             else:
                 self._color_stack[-1] = color
             self._p(f"[color] {self._color_stack[-1].value}")
@@ -622,7 +622,7 @@ def make_translation_filter(
             value = translation[0]
             if isinstance(value, int):
                 value = bytes((value,)).decode("ascii")
-            elif not isinstance(value, str):
+            elif not isinstance(value, str):  # pyright: ignore[reportUnnecessaryIsInstance]
                 raise TypeError(f"Invalid type ({type(value)}) for ascii translation")
             elif len(value) != 1:
                 raise ValueError(f'Invalid ascii string "{value}"')

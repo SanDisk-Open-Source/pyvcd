@@ -15,8 +15,10 @@ from numbers import Number
 from types import TracebackType
 from typing import IO, Any, Generic, TypeVar
 
+# The checker is configured for the oldest supported version, so it sees only
+# one side of this.
 if sys.version_info >= (3, 12):
-    from typing import override
+    from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
 
@@ -226,7 +228,7 @@ class VCDWriter:
         # The branches above narrow init to suit the variable they construct,
         # but that correspondence is not visible to a type checker, so validate
         # through the value the variable is holding rather than through init.
-        var._check_value()
+        var._check_value()  # pyright: ignore[reportPrivateUsage]
 
         # Only alter state after the init value is known to be valid
         self._vars.append(var)
@@ -348,7 +350,7 @@ class VCDWriter:
             raise VCDPhaseError("Cannot change value after close()")
 
         # Format value early to catch any errors before writing output.
-        if value != var.value or var.type == VarType.event:
+        if value != var.value or var.type == VarType.event:  # pyright: ignore[reportAny]
             val_str = var.format_value(value, self._check_values)
         else:
             val_str = ""
@@ -373,13 +375,15 @@ class VCDWriter:
             else:
                 _ = self._ofile.write(f"{val_str}\n")
 
+    # The remaining checks below guard against callers that are not themselves
+    # type checked, which is why the checker considers them redundant.
     def _get_scope_tuple(self, scope: ScopeInput) -> ScopeTuple:
         if isinstance(scope, str):
             return tuple(scope.split(self._scope_sep))
-        if isinstance(scope, Sequence):
+        if isinstance(scope, Sequence):  # pyright: ignore[reportUnnecessaryIsInstance]
             return tuple(scope)
         else:
-            raise TypeError(f"Invalid scope {scope}")
+            raise TypeError(f"Invalid scope {scope}")  # pyright: ignore[reportUnreachable]
 
     @classmethod
     def _check_timescale(cls, timescale: TimescaleLike) -> str:
@@ -387,13 +391,13 @@ class VCDWriter:
             return str(timescale)
         elif isinstance(timescale, (list, tuple)):
             if len(timescale) != 2:
-                raise ValueError(f"Invalid timescale {timescale}")
+                raise ValueError(f"Invalid timescale {timescale}")  # pyright: ignore[reportUnreachable]
             mag, unit = timescale
             return str(Timescale(TimescaleMagnitude(mag), TimescaleUnit(unit)))
-        elif isinstance(timescale, str):
+        elif isinstance(timescale, str):  # pyright: ignore[reportUnnecessaryIsInstance]
             return str(Timescale.from_str(timescale))
         else:
-            raise TypeError(f"Invalid timescale type {type(timescale).__name__}")
+            raise TypeError(f"Invalid timescale type {type(timescale).__name__}")  # pyright: ignore[reportUnreachable]
 
     def __enter__(self) -> VCDWriter:
         return self
@@ -604,8 +608,8 @@ class StringVariable(Variable[StringValue]):
         """
         if value is None:
             value_str = ""
-        elif check and not isinstance(value, str):
-            raise ValueError(f"Invalid string value ({value!r})")
+        elif check and not isinstance(value, str):  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise ValueError(f"Invalid string value ({value!r})")  # pyright: ignore[reportUnreachable]
         else:
             value_str = value.translate(
                 {
@@ -752,7 +756,7 @@ def _format_scalar_value(value: ScalarValue, size: int, check: bool) -> str:
         return "z"
     else:
         if check and (
-            not isinstance(value, str)
+            not isinstance(value, str)  # pyright: ignore[reportUnnecessaryIsInstance]
             or len(value) > size
             or any(c not in "01xzXZ-" for c in value)
         ):

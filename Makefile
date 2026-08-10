@@ -1,5 +1,5 @@
 .PHONY: lint
-lint: lint-ruff lint-mypy
+lint: lint-ruff lint-mypy lint-basedpyright
 
 .PHONY: lint-ruff
 lint-ruff:
