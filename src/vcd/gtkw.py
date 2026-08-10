@@ -12,14 +12,17 @@ __ http://gtkwave.sourceforge.net
 
 """
 
+from __future__ import annotations
+
 import datetime
 import math
 import os
 import time
 import warnings
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from enum import Enum, Flag, auto
-from typing import IO, Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
+from typing import IO, Any
 
 
 class GTKWFlag(Flag):
@@ -124,8 +127,8 @@ class GTKWSave:
         self.path = getattr(savefile, "name", None)
         self._flags = GTKWFlag(0)
         self._color_stack = [GTKWColor.normal]
-        self._filter_files: List[str] = []
-        self._filter_procs: List[str] = []
+        self._filter_files: list[str] = []
+        self._filter_procs: list[str] = []
 
     def _p(self, *args: object, **kwargs) -> None:
         print(*args, file=self.file, **kwargs)
@@ -135,7 +138,7 @@ class GTKWSave:
             self._p(f"@{flags.value:x}")
             self._flags = flags
 
-    def _set_color(self, color: Optional[Union[GTKWColor, str, int]]) -> None:
+    def _set_color(self, color: GTKWColor | str | int | None) -> None:
         if color is not None:
             if not isinstance(color, GTKWColor):
                 warnings.warn(
@@ -157,7 +160,7 @@ class GTKWSave:
                 self._color_stack[-1] = color
             self._p(f"[color] {self._color_stack[-1].value}")
 
-    def _set_translate_filter_file(self, filter_path: Optional[str]) -> None:
+    def _set_translate_filter_file(self, filter_path: str | None) -> None:
         if filter_path:
             try:
                 filter_id = 1 + self._filter_files.index(filter_path)
@@ -166,7 +169,7 @@ class GTKWSave:
                 filter_id = len(self._filter_files)
             self._p(f"^{filter_id} {filter_path}")
 
-    def _set_translate_filter_proc(self, proc_path: Optional[str]) -> None:
+    def _set_translate_filter_proc(self, proc_path: str | None) -> None:
         if proc_path:
             try:
                 filter_id = 1 + self._filter_procs.index(proc_path)
@@ -207,8 +210,8 @@ class GTKWSave:
 
     def dumpfile_mtime(
         self,
-        mtime: Optional[Union[float, time.struct_time, datetime.datetime]] = None,
-        dump_path: Optional[str] = None,
+        mtime: float | time.struct_time | datetime.datetime | None = None,
+        dump_path: str | None = None,
     ) -> None:
         """Add dump file modification time to save file.
 
@@ -230,7 +233,7 @@ class GTKWSave:
         self._p(f'[dumpfile_mtime] "{mtime_str}"')
 
     def dumpfile_size(
-        self, size: Optional[int] = None, dump_path: Optional[str] = None
+        self, size: int | None = None, dump_path: str | None = None
     ) -> None:
         """Add dump file size annotation to save file.
 
@@ -242,7 +245,7 @@ class GTKWSave:
             size = os.stat(dump_path).st_size
         self._p(f"[dumpfile_size] {size}")
 
-    def savefile(self, save_path: Optional[str] = None, abspath: bool = True) -> None:
+    def savefile(self, save_path: str | None = None, abspath: bool = True) -> None:
         """Add the path of the save file to the save file.
 
         With no parameters, the output file's name will be used.
@@ -267,7 +270,7 @@ class GTKWSave:
         self._p(f"[timestart] {timestamp}")
 
     def zoom_markers(
-        self, zoom: float = 0.0, marker: int = -1, **kwargs: Dict[str, int]
+        self, zoom: float = 0.0, marker: int = -1, **kwargs: dict[str, int]
     ) -> None:
         """Set zoom, primary marker, and markers 'a' - 'z'."""
         self._p(
@@ -402,14 +405,14 @@ class GTKWSave:
     def trace(
         self,
         name: str,
-        alias: Optional[str] = None,
-        color: Optional[Union[GTKWColor, str, int]] = None,
+        alias: str | None = None,
+        color: GTKWColor | str | int | None = None,
         datafmt: str = "hex",
         highlight: bool = False,
         rjustify: bool = True,
-        extraflags: Union[GTKWFlag, Optional[Sequence[str]]] = GTKWFlag(0),
-        translate_filter_file: Optional[str] = None,
-        translate_filter_proc: Optional[str] = None,
+        extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag(0),
+        translate_filter_file: str | None = None,
+        translate_filter_proc: str | None = None,
     ) -> None:
         """Add signal trace to save file.
 
@@ -468,14 +471,14 @@ class GTKWSave:
     def trace_bits(
         self,
         name: str,
-        alias: Optional[str] = None,
-        color: Optional[Union[str, int]] = None,
+        alias: str | None = None,
+        color: str | int | None = None,
         datafmt: str = "hex",
         highlight: bool = False,
         rjustify: bool = True,
-        extraflags: Union[GTKWFlag, Optional[Sequence[str]]] = GTKWFlag(0),
-        translate_filter_file: Optional[str] = None,
-        translate_filter_proc: Optional[str] = None,
+        extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag(0),
+        translate_filter_file: str | None = None,
+        translate_filter_proc: str | None = None,
     ) -> Generator[None, None, None]:
         """Contextmanager for tracing bits of a vector signal.
 
@@ -544,8 +547,8 @@ class GTKWSave:
         self,
         index: int,
         name: str,
-        alias: Optional[str] = None,
-        color: Optional[Union[GTKWColor, str, int]] = None,
+        alias: str | None = None,
+        color: GTKWColor | str | int | None = None,
     ) -> None:
         """Trace individual bit of vector signal.
 
@@ -563,15 +566,13 @@ class GTKWSave:
         self._p(f"({index}){name}")
 
 
-TranslationType = Union[
-    Tuple[Union[int, str], str], Tuple[Union[int, str], str, Union[str, int]]
-]
+TranslationType = tuple[int | str, str] | tuple[int | str, str, str | int]
 
 
 def make_translation_filter(
-    translations: Sequence[Tuple[Any, ...]],
+    translations: Sequence[tuple[Any, ...]],
     datafmt: str = "hex",
-    size: Optional[int] = None,
+    size: int | None = None,
 ) -> str:
     """Create translation filter.
 
@@ -650,7 +651,7 @@ def make_translation_filter(
     return "\n".join(lines)
 
 
-def decode_flags(flags: Union[str, int]) -> List[str]:
+def decode_flags(flags: str | int) -> list[str]:
     """Decode hexadecimal flags from GTKWave save file into flag names.
 
     This is useful for understanding what, for example "@802022" means when inspecting a

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import NamedTuple
 
@@ -66,7 +68,7 @@ class Timescale(NamedTuple):
     unit: TimescaleUnit
 
     @classmethod
-    def from_str(cls, s: str) -> "Timescale":
+    def from_str(cls, s: str) -> Timescale:
         for unit in TimescaleUnit:
             if s == unit.value:
                 mag = TimescaleMagnitude(1)

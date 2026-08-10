@@ -42,7 +42,7 @@ def test_vcd_timescales(capsys, timescale, expected):
     with VCDWriter(sys.stdout, date="", timescale=timescale):
         pass
     lines = split_lines(capsys)
-    assert lines == ["$timescale {} $end".format(expected), "$enddefinitions $end"]
+    assert lines == [f"$timescale {expected} $end", "$enddefinitions $end"]
 
 
 @pytest.mark.parametrize(

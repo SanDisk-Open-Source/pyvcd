@@ -19,10 +19,13 @@ parses a binary VCD stream, yielding tokens as they are encountered.
 
 """
 
+from __future__ import annotations
+
 import io
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import NamedTuple
 
 from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
 
@@ -76,7 +79,7 @@ class VarDecl(NamedTuple):
     This human-readable name typically corresponds to the name of a
     variable in the model that output the VCD."""
 
-    bit_index: Union[None, int, Tuple[int, int]]
+    bit_index: None | int | tuple[int, int]
     """Optional range of bits to select from the variable.
 
     May select a single bit index, e.g. ``ref [ 3 ]``. Or a range of
@@ -124,7 +127,7 @@ class VectorChange(NamedTuple):
     """
 
     id_code: str  #: Identifier code of associated variable.
-    value: Union[int, str]  #: New value of associated vector variable.
+    value: int | str  #: New value of associated vector variable.
 
 
 class RealChange(NamedTuple):
@@ -196,18 +199,18 @@ class Token(NamedTuple):
     span: Span
     "The start and end location of the token within the file/stream."
 
-    data: Union[
-        None,  # $enddefinitions $upscope $dump* $end
-        int,  # time change
-        str,  # $comment, $date, $version
-        ScopeDecl,  # $scope
-        Timescale,  # $timescale
-        VarDecl,  # $var
-        ScalarChange,
-        VectorChange,
-        RealChange,
-        StringChange,
-    ]
+    data: (
+        None  # $enddefinitions $upscope $dump* $end
+        | int  # time change
+        | str  # $comment, $date, $version
+        | ScopeDecl  # $scope
+        | Timescale  # $timescale
+        | VarDecl  # $var
+        | ScalarChange
+        | VectorChange
+        | RealChange
+        | StringChange
+    )
     "Data associated with the token. The data type depends on :attr:`kind`."
 
     @property
@@ -297,10 +300,10 @@ class VCDParseError(Exception):
         "Location within VCD file where error was detected."
 
 
-HasReadinto = Union[io.BufferedIOBase, io.RawIOBase]
+HasReadinto = io.BufferedIOBase | io.RawIOBase
 
 
-def tokenize(stream: HasReadinto, buf_size: Optional[int] = None) -> Iterator[Token]:
+def tokenize(stream: HasReadinto, buf_size: int | None = None) -> Iterator[Token]:
     """Parse VCD stream into tokens.
 
     The input stream must be opened in binary mode. E.g. with ``open(path, 'rb')``.
@@ -406,7 +409,7 @@ class _TokenizerState:
 
         return bytes(identifier).decode("ascii")
 
-    def take_simple_identifier(self) -> List[int]:
+    def take_simple_identifier(self) -> list[int]:
         identifier = [self.buf[self.pos]]
         c = self.advance()
 
@@ -422,7 +425,7 @@ class _TokenizerState:
 
         return identifier
 
-    def take_escaped_identifier(self) -> List[int]:
+    def take_escaped_identifier(self) -> list[int]:
         identifier = []
         c = self.advance()
         while c not in (9, 10, 32):  # '\t', '\n', ' '
@@ -436,7 +439,7 @@ class _TokenizerState:
 
         return identifier
 
-    def take_name_chars(self) -> List[int]:
+    def take_name_chars(self) -> list[int]:
         # Whitespace separates a bracketed section from the name it qualifies,
         # but whitespace within such a section does not end the name, as in
         # "$var wire 4 ! foo[ 3 : 1 ] $end".
@@ -463,7 +466,7 @@ class _TokenizerState:
         else:
             return bytes(self.take_name_chars()).decode("ascii")
 
-    def take_var_ref(self) -> Tuple[str, Union[None, int, Tuple[int, int]]]:
+    def take_var_ref(self) -> tuple[str, None | int | tuple[int, int]]:
         c = self.buf[self.pos]
         if c == 92:  # '\'
             chars = self.take_escaped_identifier()
@@ -516,9 +519,7 @@ def _is_ws(c: int) -> bool:
     return c == 32 or 9 <= c <= 13
 
 
-def _split_bit_index(
-    ref: str, start: int
-) -> Tuple[str, Union[None, int, Tuple[int, int]]]:
+def _split_bit_index(ref: str, start: int) -> tuple[str, None | int | tuple[int, int]]:
     """Split a trailing bit index from a variable reference.
 
     Names such as ``mem_array[0]`` are indistinguishable from a bit
@@ -578,7 +579,7 @@ def _parse_token(s: _TokenizerState) -> Token:
         while c == 48 or c == 49:  # '0' or '1'
             vector.append(c)
             c = s.advance()
-        vector_value: Union[int, str]
+        vector_value: int | str
 
         if c == 122 or c == 90 or c == 120 or c == 88:  # c in 'zZxX'
             vector.append(c)

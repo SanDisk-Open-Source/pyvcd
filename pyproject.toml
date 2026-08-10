@@ -84,8 +84,10 @@ ignore = [
 select = [
     "E",  # pycodestyle errors
     "F",  # pyflakes
-    "W",  # pycodestyle warnings
+    "FA",  # flake8-future-annotations
     "I",  # isort
+    "UP",  # pyupgrade
+    "W",  # pycodestyle warnings
 ]
 
 [tool.coverage.run]

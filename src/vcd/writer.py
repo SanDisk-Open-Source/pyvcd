@@ -4,24 +4,14 @@ This module provides :class:`VCDWriter` for writing VCD files.
 
 """
 
+from __future__ import annotations
+
+from collections.abc import Generator, Sequence
 from datetime import datetime
 from itertools import zip_longest
 from numbers import Number
 from types import TracebackType
-from typing import (
-    IO,
-    Dict,
-    Generator,
-    Generic,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import IO, Generic, TypeVar
 
 from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
 
@@ -35,19 +25,19 @@ class VCDPhaseError(Exception):
     """
 
 
-ScopeTuple = Tuple[str, ...]
-ScopeInput = Union[str, Sequence[str]]
-TimeValue = Union[int, float]
-TimescaleLike = Union[Timescale, Tuple[int, str], str]
+ScopeTuple = tuple[str, ...]
+ScopeInput = str | Sequence[str]
+TimeValue = int | float
+TimescaleLike = Timescale | tuple[int, str] | str
 CompoundSize = Sequence[int]
-VariableSize = Union[int, CompoundSize]
+VariableSize = int | CompoundSize
 
-EventValue = Union[bool, int]
-RealValue = Union[float, int]
-ScalarValue = Union[int, bool, str, None]
-StringValue = Union[str, None]
+EventValue = bool | int
+RealValue = float | int
+ScalarValue = int | bool | str | None
+StringValue = str | None
 CompoundValue = Sequence[ScalarValue]
-VarValue = Union[EventValue, RealValue, ScalarValue, StringValue, CompoundValue]
+VarValue = EventValue | RealValue | ScalarValue | StringValue | CompoundValue
 
 
 class VCDWriter:
@@ -75,10 +65,10 @@ class VCDWriter:
         self,
         file: IO[str],
         timescale: TimescaleLike = "1 us",
-        date: Optional[str] = None,
+        date: str | None = None,
         comment: str = "",
         version: str = "",
-        default_scope_type: Union[ScopeType, str] = ScopeType.module,
+        default_scope_type: ScopeType | str = ScopeType.module,
         scope_sep: str = ".",
         check_values: bool = True,
         init_timestamp: TimeValue = 0,
@@ -97,16 +87,14 @@ class VCDWriter:
         self._closed = False
         self._dumping = True
         self._next_var_id: int = 1
-        self._scope_var_strs: Dict[ScopeTuple, List[str]] = {}
-        self._scope_var_names: Dict[ScopeTuple, Set[str]] = {}
-        self._scope_types: Dict[ScopeTuple, ScopeType] = {}
-        self._vars: List[Variable] = []
+        self._scope_var_strs: dict[ScopeTuple, list[str]] = {}
+        self._scope_var_names: dict[ScopeTuple, set[str]] = {}
+        self._scope_types: dict[ScopeTuple, ScopeType] = {}
+        self._vars: list[Variable] = []
         self._timestamp = int(init_timestamp)
-        self._last_dumped_ts: Optional[int] = None
+        self._last_dumped_ts: int | None = None
 
-    def set_scope_type(
-        self, scope: ScopeInput, scope_type: Union[ScopeType, str]
-    ) -> None:
+    def set_scope_type(self, scope: ScopeInput, scope_type: ScopeType | str) -> None:
         """Set the scope_type for a given scope.
 
         The scope's type may be set to one of the valid :class:`ScopeType` values. VCD
@@ -126,10 +114,10 @@ class VCDWriter:
         self,
         scope: ScopeInput,
         name: str,
-        var_type: Union[VarType, str],
-        size: Optional[VariableSize] = None,
+        var_type: VarType | str,
+        size: VariableSize | None = None,
         init: VarValue = None,
-    ) -> "Variable":
+    ) -> Variable:
         """Register a new VCD variable.
 
         All VCD variables must be registered prior to any value changes.
@@ -241,7 +229,7 @@ class VCDWriter:
 
         return var
 
-    def register_alias(self, scope: ScopeInput, name: str, var: "Variable") -> None:
+    def register_alias(self, scope: ScopeInput, name: str, var: Variable) -> None:
         """Register a variable alias.
 
         The same VCD identifier may be associated with multiple reference names ("$var"
@@ -321,7 +309,7 @@ class VCDWriter:
             self._last_dumped_ts = self._timestamp
             self._ofile.write(f"#{self._timestamp}\n")
 
-    def change(self, var: "Variable", timestamp: TimeValue, value: VarValue) -> None:
+    def change(self, var: Variable, timestamp: TimeValue, value: VarValue) -> None:
         """Change variable's value in VCD stream.
 
         This is the fundamental behavior of a :class:`VCDWriter` instance. Each time a
@@ -400,18 +388,18 @@ class VCDWriter:
         else:
             raise TypeError(f"Invalid timescale type {type(timescale).__name__}")
 
-    def __enter__(self) -> "VCDWriter":
+    def __enter__(self) -> VCDWriter:
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[Type[Exception]],
-        exc_value: Optional[Exception],
-        traceback: Optional[TracebackType],
+        exc_type: type[Exception] | None,
+        exc_value: Exception | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.close()
 
-    def close(self, timestamp: Optional[TimeValue] = None) -> None:
+    def close(self, timestamp: TimeValue | None = None) -> None:
         """Close VCD writer.
 
         Any buffered VCD data is flushed to the output file. After :meth:`close()`, no
@@ -429,7 +417,7 @@ class VCDWriter:
             self.flush(timestamp)
             self._closed = True
 
-    def flush(self, timestamp: Optional[TimeValue] = None) -> None:
+    def flush(self, timestamp: TimeValue | None = None) -> None:
         """Flush any buffered VCD data to output file.
 
         If the VCD header has not already been written, calling `flush()` will force the
@@ -478,8 +466,7 @@ class VCDWriter:
             else:
                 assert scope != prev_scope  # pragma no cover
 
-            for var_str in var_strs:
-                yield var_str
+            yield from var_strs
 
             prev_scope = scope
 
@@ -527,10 +514,10 @@ class Variable(Generic[ValueType]):
     def _check_value(self) -> None:
         self.format_value(self.value, check=True)
 
-    def dump(self, check: bool = True) -> Optional[str]:
+    def dump(self, check: bool = True) -> str | None:
         return self.format_value(self.value, check)
 
-    def dump_off(self) -> Optional[str]:
+    def dump_off(self) -> str | None:
         return None
 
 
@@ -580,7 +567,7 @@ class EventVariable(Variable[EventValue]):
         else:
             raise ValueError("Invalid event value")
 
-    def dump(self, check: bool = True) -> Optional[str]:
+    def dump(self, check: bool = True) -> str | None:
         return None
 
 
@@ -706,7 +693,7 @@ class CompoundVectorVariable(Variable[CompoundValue]):
             )
         # The string is built-up right-to-left in order to minimize/avoid left-extension
         # in the final value string.
-        vstr_list: List[str] = []
+        vstr_list: list[str] = []
         vstr_len = 0
         size_sum = 0
         for v, size in zip(reversed(value), reversed(self.size)):
