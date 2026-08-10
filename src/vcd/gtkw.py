@@ -130,8 +130,8 @@ class GTKWSave:
         self._filter_files: list[str] = []
         self._filter_procs: list[str] = []
 
-    def _p(self, *args: object, **kwargs) -> None:
-        print(*args, file=self.file, **kwargs)
+    def _p(self, *args: object, end: str = "\n") -> None:
+        print(*args, file=self.file, end=end)
 
     def _set_flags(self, flags: GTKWFlag) -> None:
         if flags != self._flags:
@@ -183,7 +183,7 @@ class GTKWSave:
         for comment in comments:
             self._p("[*]", comment)
 
-    def dumpfile(self, dump_path: str, abspath: bool = True) -> None:
+    def dumpfile(self, dump_path: str | None, abspath: bool = True) -> None:
         """Add VCD dump file path to save file.
 
         The `[dumpfile]` must be in the save file in order to only have to specify the
@@ -608,7 +608,7 @@ def make_translation_filter(
         value_format = ".16g"
     elif datafmt == "ascii":
         value_format = ""
-        ascii_translations = []
+        ascii_translations: list[tuple[Any, ...]] = []
         for translation in translations:
             value = translation[0]
             rest = list(translation[1:])
@@ -623,7 +623,7 @@ def make_translation_filter(
     else:
         raise ValueError(f"invalid datafmt ({datafmt})")
 
-    lines = []
+    lines: list[str] = []
 
     for translation in translations:
         if len(translation) == 2:

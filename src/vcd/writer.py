@@ -11,7 +11,7 @@ from datetime import datetime
 from itertools import zip_longest
 from numbers import Number
 from types import TracebackType
-from typing import IO, Generic, TypeVar
+from typing import IO, Any, Generic, TypeVar
 
 from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
 
@@ -90,7 +90,7 @@ class VCDWriter:
         self._scope_var_strs: dict[ScopeTuple, list[str]] = {}
         self._scope_var_names: dict[ScopeTuple, set[str]] = {}
         self._scope_types: dict[ScopeTuple, ScopeType] = {}
-        self._vars: list[Variable] = []
+        self._vars: list[Variable[Any]] = []
         self._timestamp = int(init_timestamp)
         self._last_dumped_ts: int | None = None
 
@@ -117,7 +117,7 @@ class VCDWriter:
         var_type: VarType | str,
         size: VariableSize | None = None,
         init: VarValue = None,
-    ) -> Variable:
+    ) -> Variable[Any]:
         """Register a new VCD variable.
 
         All VCD variables must be registered prior to any value changes.
@@ -174,7 +174,7 @@ class VCDWriter:
 
         var_str = f"$var {var_type} {var_size} {ident} {name} $end"
 
-        var: Variable
+        var: Variable[Any]
         if var_type == VarType.string:
             if init is None:
                 init = ""
@@ -229,7 +229,7 @@ class VCDWriter:
 
         return var
 
-    def register_alias(self, scope: ScopeInput, name: str, var: Variable) -> None:
+    def register_alias(self, scope: ScopeInput, name: str, var: Variable[Any]) -> None:
         """Register a variable alias.
 
         The same VCD identifier may be associated with multiple reference names ("$var"
@@ -309,7 +309,7 @@ class VCDWriter:
             self._last_dumped_ts = self._timestamp
             self._ofile.write(f"#{self._timestamp}\n")
 
-    def change(self, var: Variable, timestamp: TimeValue, value: VarValue) -> None:
+    def change(self, var: Variable[Any], timestamp: TimeValue, value: VarValue) -> None:
         """Change variable's value in VCD stream.
 
         This is the fundamental behavior of a :class:`VCDWriter` instance. Each time a

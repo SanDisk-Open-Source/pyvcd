@@ -371,7 +371,7 @@ class _TokenizerState:
             raise VCDParseError(self.loc, f"Expected whitespace after identifier ${kw}")
 
     def take_decimal(self) -> int:
-        digits = []
+        digits: list[int] = []
         c = self.buf[self.pos]
         while 48 <= c <= 57:  # '0' <= c <= '9'
             digits.append(c)
@@ -382,7 +382,7 @@ class _TokenizerState:
             raise VCDParseError(self.loc, "Expected decimal value")
 
     def take_id_code(self) -> str:
-        printables = []
+        printables: list[int] = []
         c = self.buf[self.pos]
         while 33 <= c <= 126:  # printable character
             printables.append(c)
@@ -426,7 +426,7 @@ class _TokenizerState:
         return identifier
 
     def take_escaped_identifier(self) -> list[int]:
-        identifier = []
+        identifier: list[int] = []
         c = self.advance()
         while c not in (9, 10, 32):  # '\t', '\n', ' '
             if c < 33 or c > 126:  # printable ASCII characters
@@ -443,7 +443,7 @@ class _TokenizerState:
         # Whitespace separates a bracketed section from the name it qualifies,
         # but whitespace within such a section does not end the name, as in
         # "$var wire 4 ! foo[ 3 : 1 ] $end".
-        chars = []
+        chars: list[int] = []
         depth = 0
         c = self.buf[self.pos]
 
@@ -574,7 +574,7 @@ def _parse_token(s: _TokenizerState) -> Token:
         )
     elif c == 66 or c == 98:  # 'B' or 'b'
         # Parse vector change
-        vector = []
+        vector: list[int] = []
         c = s.advance()
         while c == 48 or c == 49:  # '0' or '1'
             vector.append(c)
@@ -605,7 +605,7 @@ def _parse_token(s: _TokenizerState) -> Token:
         )
     elif c == 82 or c == 114:  # 'R' or 'r'
         # Parse real change
-        real_digits = []
+        real_digits: list[int] = []
         c = s.advance()
 
         while not _is_ws(c):
@@ -626,7 +626,7 @@ def _parse_token(s: _TokenizerState) -> Token:
 
         return Token(TokenKind.CHANGE_REAL, s.span(start), RealChange(id_code, real))
     elif c == 83 or c == 115:  # 'S' or 's'
-        chars = []
+        chars: list[int] = []
         c = s.advance()
         while not _is_ws(c):
             chars.append(c)
