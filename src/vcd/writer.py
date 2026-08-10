@@ -80,25 +80,25 @@ class VCDWriter:
         check_values: bool = True,
         init_timestamp: TimeValue = 0,
     ) -> None:
-        self._ofile = file
-        self._header_keywords = {
+        self._ofile: IO[str] = file
+        self._header_keywords: dict[str, str] = {
             "$timescale": self._check_timescale(timescale),
             "$date": str(datetime.now()) if date is None else date,
             "$comment": comment,
             "$version": version,
         }
-        self._default_scope_type = ScopeType(default_scope_type)
-        self._scope_sep = scope_sep
-        self._check_values = check_values
-        self._registering = True
-        self._closed = False
-        self._dumping = True
+        self._default_scope_type: ScopeType = ScopeType(default_scope_type)
+        self._scope_sep: str = scope_sep
+        self._check_values: bool = check_values
+        self._registering: bool = True
+        self._closed: bool = False
+        self._dumping: bool = True
         self._next_var_id: int = 1
         self._scope_var_strs: dict[ScopeTuple, list[str]] = {}
         self._scope_var_names: dict[ScopeTuple, set[str]] = {}
         self._scope_types: dict[ScopeTuple, ScopeType] = {}
         self._vars: list[Variable[Any]] = []
-        self._timestamp = int(init_timestamp)
+        self._timestamp: int = int(init_timestamp)
         self._last_dumped_ts: int | None = None
 
     def set_scope_type(self, scope: ScopeInput, scope_type: ScopeType | str) -> None:
@@ -502,17 +502,17 @@ ValueType = TypeVar("ValueType")
 class Variable(ABC, Generic[ValueType]):
     """VCD variable details needed to call :meth:`VCDWriter.change()`."""
 
-    __slots__ = ("ident", "type", "size", "value")
+    __slots__: tuple[str, ...] = ("ident", "type", "size", "value")
 
     def __init__(self, ident: str, type: VarType, size: VariableSize, init: ValueType):
         #: Identifier used in VCD output stream.
-        self.ident = ident
+        self.ident: str = ident
         #: VCD variable type; one of :const:`VCDWriter.VAR_TYPES`.
-        self.type = type
+        self.type: VarType = type
         #: Size, in bits, of variable.
-        self.size = size
+        self.size: VariableSize = size
         #: Last value of variable.
-        self.value = init
+        self.value: ValueType = init
 
     @abstractmethod
     def format_value(self, value: ValueType, check: bool = True) -> str:
@@ -535,7 +535,7 @@ class ScalarVariable(Variable[ScalarValue]):
 
     """
 
-    __slots__ = ()
+    __slots__: tuple[str, ...] = ()
 
     @override
     def format_value(self, value: ScalarValue, check: bool = True) -> str:
@@ -590,7 +590,7 @@ class StringVariable(Variable[StringValue]):
 
     """
 
-    __slots__ = ()
+    __slots__: tuple[str, ...] = ()
 
     @override
     def format_value(self, value: StringValue, check: bool = True) -> str:
@@ -626,7 +626,7 @@ class RealVariable(Variable[RealValue]):
 
     """
 
-    __slots__ = ()
+    __slots__: tuple[str, ...] = ()
 
     @override
     def format_value(self, value: RealValue, check: bool = True) -> str:
@@ -652,9 +652,10 @@ class VectorVariable(Variable[ScalarValue]):
 
     """
 
-    __slots__ = ()
+    __slots__: tuple[str, ...] = ()
 
-    size: int
+    # Fixed at construction, so narrowing the base declaration is safe.
+    size: int  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @override
     def format_value(self, value: ScalarValue, check: bool = True) -> str:
@@ -690,9 +691,10 @@ class CompoundVectorVariable(Variable[CompoundValue]):
 
     """
 
-    __slots__ = ()
+    __slots__: tuple[str, ...] = ()
 
-    size: CompoundSize
+    # Fixed at construction, so narrowing the base declaration is safe.
+    size: CompoundSize  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @override
     def format_value(self, value: CompoundValue, check: bool = True) -> str:

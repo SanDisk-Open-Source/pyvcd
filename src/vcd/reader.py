@@ -296,7 +296,7 @@ class VCDParseError(Exception):
 
     def __init__(self, loc: Location, msg: str) -> None:
         super().__init__(f"{loc.line}:{loc.column}: {msg}")
-        self.loc = loc
+        self.loc: Location = loc
         "Location within VCD file where error was detected."
 
 

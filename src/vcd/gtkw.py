@@ -123,10 +123,10 @@ class GTKWSave:
     """
 
     def __init__(self, savefile: IO[str]) -> None:
-        self.file = savefile
-        self.path = getattr(savefile, "name", None)
-        self._flags = GTKWFlag(0)
-        self._color_stack = [GTKWColor.normal]
+        self.file: IO[str] = savefile
+        self.path: str | None = getattr(savefile, "name", None)
+        self._flags: GTKWFlag = GTKWFlag(0)
+        self._color_stack: list[GTKWColor] = [GTKWColor.normal]
         self._filter_files: list[str] = []
         self._filter_procs: list[str] = []
 
