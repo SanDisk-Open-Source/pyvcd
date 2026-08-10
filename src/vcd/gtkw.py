@@ -28,6 +28,9 @@ from typing import IO, Any
 class GTKWFlag(Flag):
     """These are the valid GTKWave trace flags."""
 
+    none = 0
+    "No flags"
+
     highlight = auto()
     "Highlight the trace item"
 
@@ -125,7 +128,7 @@ class GTKWSave:
     def __init__(self, savefile: IO[str]) -> None:
         self.file: IO[str] = savefile
         self.path: str | None = getattr(savefile, "name", None)
-        self._flags: GTKWFlag = GTKWFlag(0)
+        self._flags: GTKWFlag = GTKWFlag.none
         self._color_stack: list[GTKWColor] = [GTKWColor.normal]
         self._filter_files: list[str] = []
         self._filter_procs: list[str] = []
@@ -412,7 +415,7 @@ class GTKWSave:
         datafmt: str = "hex",
         highlight: bool = False,
         rjustify: bool = True,
-        extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag(0),
+        extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag.none,
         translate_filter_file: str | None = None,
         translate_filter_proc: str | None = None,
     ) -> None:
@@ -480,7 +483,7 @@ class GTKWSave:
         datafmt: str = "hex",
         highlight: bool = False,
         rjustify: bool = True,
-        extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag(0),
+        extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag.none,
         translate_filter_file: str | None = None,
         translate_filter_proc: str | None = None,
     ) -> Generator[None, None, None]:
