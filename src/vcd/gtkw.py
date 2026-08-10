@@ -22,7 +22,7 @@ import warnings
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from enum import Enum, Flag, auto
-from typing import IO, Any
+from typing import IO
 
 
 class GTKWFlag(Flag):
@@ -579,7 +579,7 @@ TranslationType = tuple[int | str, str] | tuple[int | str, str, str | int]
 
 
 def make_translation_filter(
-    translations: Sequence[tuple[Any, ...]],
+    translations: Sequence[TranslationType],
     datafmt: str = "hex",
     size: int | None = None,
 ) -> str:
@@ -617,17 +617,19 @@ def make_translation_filter(
         value_format = ".16g"
     elif datafmt == "ascii":
         value_format = ""
-        ascii_translations: list[tuple[Any, ...]] = []
+        ascii_translations: list[TranslationType] = []
         for translation in translations:
             value = translation[0]
-            rest = list(translation[1:])
             if isinstance(value, int):
                 value = bytes((value,)).decode("ascii")
             elif not isinstance(value, str):
                 raise TypeError(f"Invalid type ({type(value)}) for ascii translation")
             elif len(value) != 1:
                 raise ValueError(f'Invalid ascii string "{value}"')
-            ascii_translations.append(tuple([value] + rest))
+            if len(translation) == 2:
+                ascii_translations.append((value, translation[1]))
+            else:
+                ascii_translations.append((value, translation[1], translation[2]))
         translations = ascii_translations
     else:
         raise ValueError(f"invalid datafmt ({datafmt})")
@@ -643,6 +645,7 @@ def make_translation_filter(
 
         if datafmt in ["hex", "oct", "bin"]:
             assert isinstance(size, int)
+            assert isinstance(value, int)
             max_val = 1 << size
             if -value > (max_val >> 1) or value >= max_val:
                 raise ValueError(f"Value ({value}) not representable in {size} bits")
