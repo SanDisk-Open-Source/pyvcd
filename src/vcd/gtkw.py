@@ -274,9 +274,7 @@ class GTKWSave:
         """Add simulation start time to the save file."""
         self._p(f"[timestart] {timestamp}")
 
-    def zoom_markers(
-        self, zoom: float = 0.0, marker: int = -1, **kwargs: dict[str, int]
-    ) -> None:
+    def zoom_markers(self, zoom: float = 0.0, marker: int = -1, **kwargs: int) -> None:
         """Set zoom, primary marker, and markers 'a' - 'z'."""
         self._p(
             f"*{zoom:.6f} {marker}",
