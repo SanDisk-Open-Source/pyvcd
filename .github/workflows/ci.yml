@@ -79,37 +79,18 @@ jobs:
       run: uv publish --trusted-publishing always
 
   test:
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Python builds older than 3.10 are not published for the newer
-          # runner images, so those versions pin the oldest image available.
-          - python-version: '3.7'
-            runs-on: ubuntu-22.04
-          - python-version: '3.8'
-            runs-on: ubuntu-22.04
-          - python-version: '3.9'
-            runs-on: ubuntu-22.04
-          - python-version: '3.10'
-            runs-on: ubuntu-latest
-          - python-version: '3.11'
-            runs-on: ubuntu-latest
-          - python-version: '3.12'
-            runs-on: ubuntu-latest
-          - python-version: '3.13'
-            runs-on: ubuntu-latest
-          - python-version: '3.14'
-            runs-on: ubuntu-latest
-          - python-version: 'pypy-3.7'
-            runs-on: ubuntu-22.04
-          - python-version: 'pypy-3.9'
-            runs-on: ubuntu-latest
-          - python-version: 'pypy-3.10'
-            runs-on: ubuntu-latest
-          - python-version: 'pypy-3.11'
-            runs-on: ubuntu-latest
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
+          - 'pypy-3.10'
+          - 'pypy-3.11'
 
     steps:
     - uses: actions/checkout@v7
