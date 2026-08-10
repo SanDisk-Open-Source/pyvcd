@@ -66,6 +66,8 @@ dev = [
     {include-group = "lint"},
     {include-group = "type"},
     {include-group = "docs"},
+    "tox>=4",
+    "tox-uv>=1",
 ]
 
 [tool.pytest]
