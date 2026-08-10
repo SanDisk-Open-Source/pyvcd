@@ -316,7 +316,7 @@ def tokenize(stream: HasReadinto, buf_size: int | None = None) -> Iterator[Token
 
     try:
         while True:
-            s.advance()
+            _ = s.advance()
             yield _parse_token(s)
     except StopIteration:
         return
@@ -366,7 +366,7 @@ class _TokenizerState:
 
     def take_ws_after_kw(self, kw: str) -> None:
         if _is_ws(self.buf[self.pos]):
-            self.advance()
+            _ = self.advance()
         else:
             raise VCDParseError(self.loc, f"Expected whitespace after identifier ${kw}")
 
@@ -560,14 +560,14 @@ def _parse_token(s: _TokenizerState) -> Token:
     start = s.loc
     if c == 35:  # '#'
         # Parse time change
-        s.advance()
+        _ = s.advance()
         time = s.take_decimal()
         return Token(TokenKind.CHANGE_TIME, s.span(start), time)
     elif c == 48 or c == 49 or c == 122 or c == 90 or c == 120 or c == 88:
         # c in '01zZxX'
         # Parse scalar change
         scalar_value = chr(c)
-        s.advance()
+        _ = s.advance()
         id_code = s.take_id_code()
         return Token(
             TokenKind.CHANGE_SCALAR, s.span(start), ScalarChange(id_code, scalar_value)
@@ -596,7 +596,7 @@ def _parse_token(s: _TokenizerState) -> Token:
         if not _is_ws(c):
             raise VCDParseError(s.loc, "Expected whitespace after vector value")
 
-        s.skip_ws()
+        _ = s.skip_ws()
 
         id_code = s.take_id_code()
 
@@ -620,7 +620,7 @@ def _parse_token(s: _TokenizerState) -> Token:
                 start, f"Expected real value, got: {real_str}"
             ) from None
 
-        s.skip_ws()
+        _ = s.skip_ws()
 
         id_code = s.take_id_code()
 
@@ -631,14 +631,14 @@ def _parse_token(s: _TokenizerState) -> Token:
         while not _is_ws(c):
             chars.append(c)
             c = s.advance()
-        s.skip_ws()
+        _ = s.skip_ws()
         id_code = s.take_id_code()
         string_value = bytes(chars).decode("ascii")
         return Token(
             TokenKind.CHANGE_STRING, s.span(start), StringChange(id_code, string_value)
         )
     elif c == 36:  # '$'
-        s.advance()
+        _ = s.advance()
         kw = s.take_identifier()
 
         if kw == "comment":
@@ -655,7 +655,7 @@ def _parse_token(s: _TokenizerState) -> Token:
             return Token(TokenKind.ENDDEFINITIONS, s.span(start), None)
         elif kw == "scope":
             s.take_ws_after_kw(kw)
-            s.skip_ws()
+            _ = s.skip_ws()
             identifier = s.take_identifier()
             try:
                 scope_type = ScopeType(identifier)
@@ -664,7 +664,7 @@ def _parse_token(s: _TokenizerState) -> Token:
                     s.loc, f"Invalid $scope type: {identifier}"
                 ) from None
 
-            s.skip_ws()
+            _ = s.skip_ws()
 
             scope_ident = s.take_scope_ident()
 
@@ -675,7 +675,7 @@ def _parse_token(s: _TokenizerState) -> Token:
             return Token(TokenKind.SCOPE, s.span(start), scope_decl)
         elif kw == "timescale":
             s.take_ws_after_kw(kw)
-            s.skip_ws()
+            _ = s.skip_ws()
             mag_int = s.take_decimal()
 
             try:
@@ -684,11 +684,13 @@ def _parse_token(s: _TokenizerState) -> Token:
                 valid_magnitudes = ", ".join(str(m.value) for m in TimescaleMagnitude)
                 raise VCDParseError(
                     s.loc,
-                    f"Invalid $timescale magnitude: {mag_int}. "
-                    f"Must be one of: {valid_magnitudes}.",
+                    (
+                        f"Invalid $timescale magnitude: {mag_int}. "
+                        f"Must be one of: {valid_magnitudes}."
+                    ),
                 ) from None
 
-            s.skip_ws()
+            _ = s.skip_ws()
             unit_str = s.take_identifier()
             try:
                 unit = TimescaleUnit(unit_str)
@@ -696,8 +698,10 @@ def _parse_token(s: _TokenizerState) -> Token:
                 valid_units = ", ".join(u.value for u in TimescaleUnit)
                 raise VCDParseError(
                     s.loc,
-                    f"Invalid $timescale unit: {unit_str}. "
-                    f"Must be one of: {valid_units}.",
+                    (
+                        f"Invalid $timescale unit: {unit_str}. "
+                        f"Must be one of: {valid_units}."
+                    ),
                 ) from None
 
             s.take_end()
@@ -710,7 +714,7 @@ def _parse_token(s: _TokenizerState) -> Token:
             return Token(TokenKind.UPSCOPE, s.span(start), None)
         elif kw == "var":
             s.take_ws_after_kw(kw)
-            s.skip_ws()
+            _ = s.skip_ws()
             type_str = s.take_identifier()
             try:
                 type_ = VarType(type_str)
@@ -721,11 +725,11 @@ def _parse_token(s: _TokenizerState) -> Token:
                     f"Invalid $var type: {type_str}. Must be one of: {valid_types}",
                 ) from None
 
-            s.skip_ws()
+            _ = s.skip_ws()
             size = s.take_decimal()
-            s.skip_ws()
+            _ = s.skip_ws()
             id_code = s.take_id_code()
-            s.skip_ws()
+            _ = s.skip_ws()
             reference, bit_index = s.take_var_ref()
 
             s.take_end()

@@ -269,12 +269,12 @@ class VCDWriter:
         if not self._dumping:
             return
         self._dump_timestamp()
-        self._ofile.write("$dumpoff\n")
+        _ = self._ofile.write("$dumpoff\n")
         for var in self._vars:
             val_str = var.dump_off()
             if val_str:
-                self._ofile.write(val_str + "\n")
-        self._ofile.write("$end\n")
+                _ = self._ofile.write(val_str + "\n")
+        _ = self._ofile.write("$end\n")
         self._dumping = False
 
     def dump_on(self, timestamp: TimeValue) -> None:
@@ -289,12 +289,12 @@ class VCDWriter:
         self._dump_values("$dumpon")
 
     def _dump_values(self, keyword: str) -> None:
-        self._ofile.write(keyword + "\n")
+        _ = self._ofile.write(keyword + "\n")
         for var in self._vars:
             val_str = var.dump(self._check_values)
             if val_str:
-                self._ofile.write(val_str + "\n")
-        self._ofile.write("$end\n")
+                _ = self._ofile.write(val_str + "\n")
+        _ = self._ofile.write("$end\n")
 
     def _set_timestamp(self, timestamp: TimeValue) -> None:
         if timestamp < self._timestamp:
@@ -307,7 +307,7 @@ class VCDWriter:
             self._last_dumped_ts is None
         ):
             self._last_dumped_ts = self._timestamp
-            self._ofile.write(f"#{self._timestamp}\n")
+            _ = self._ofile.write(f"#{self._timestamp}\n")
 
     def change(self, var: Variable[Any], timestamp: TimeValue, value: VarValue) -> None:
         """Change variable's value in VCD stream.
@@ -362,9 +362,9 @@ class VCDWriter:
             # Unroll for performance: self._dump_timestamp()
             if self._timestamp != self._last_dumped_ts:
                 self._last_dumped_ts = self._timestamp
-                self._ofile.write(f"#{self._timestamp}\n{val_str}\n")
+                _ = self._ofile.write(f"#{self._timestamp}\n{val_str}\n")
             else:
-                self._ofile.write(f"{val_str}\n")
+                _ = self._ofile.write(f"{val_str}\n")
 
     def _get_scope_tuple(self, scope: ScopeInput) -> ScopeTuple:
         if isinstance(scope, str):
@@ -477,7 +477,7 @@ class VCDWriter:
 
     def _finalize_registration(self) -> None:
         assert self._registering
-        self._ofile.write("\n".join(self._gen_header()) + "\n")
+        _ = self._ofile.write("\n".join(self._gen_header()) + "\n")
         if self._vars:
             self._dump_timestamp()
             self._dump_values("$dumpvars")
@@ -512,7 +512,7 @@ class Variable(Generic[ValueType]):
         raise NotImplementedError
 
     def _check_value(self) -> None:
-        self.format_value(self.value, check=True)
+        _ = self.format_value(self.value, check=True)
 
     def dump(self, check: bool = True) -> str | None:
         return self.format_value(self.value, check)

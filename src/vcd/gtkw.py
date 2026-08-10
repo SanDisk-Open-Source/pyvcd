@@ -142,8 +142,10 @@ class GTKWSave:
         if color is not None:
             if not isinstance(color, GTKWColor):
                 warnings.warn(
-                    "Using str and int for colors is deprecated. "
-                    "Use vcd.gtkw.GTKWColor instead.",
+                    (
+                        "Using str and int for colors is deprecated. "
+                        "Use vcd.gtkw.GTKWColor instead."
+                    ),
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -381,7 +383,7 @@ class GTKWSave:
             flags |= GTKWFlag.highlight
         self._set_flags(flags)
         self._p(f"-{name}")
-        self._color_stack.pop(-1)
+        _ = self._color_stack.pop(-1)
 
     def blank(
         self, label: str = "", analog_extend: bool = False, highlight: bool = False
@@ -443,8 +445,10 @@ class GTKWSave:
             flags |= extraflags
         else:
             warnings.warn(
-                "Using Optional[Sequence[str]] for extraflags is deprecated. "
-                "Use vcd.gtkw.GTKWFlag instead.",
+                (
+                    "Using Optional[Sequence[str]] for extraflags is deprecated. "
+                    "Use vcd.gtkw.GTKWFlag instead."
+                ),
                 DeprecationWarning,
             )
             if extraflags is not None:
@@ -521,8 +525,10 @@ class GTKWSave:
             flags |= extraflags
         else:
             warnings.warn(
-                "Using Optional[Sequence[str]] for extraflags is deprecated. "
-                "Use vcd.gtkw.GTKWFlag instead.",
+                (
+                    "Using Optional[Sequence[str]] for extraflags is deprecated. "
+                    "Use vcd.gtkw.GTKWFlag instead."
+                ),
                 DeprecationWarning,
             )
             if extraflags is not None:
@@ -711,7 +717,7 @@ def spawn_gtkwave_interactive(
         tail_pid = os.fork()
         if not tail_pid:
             os.close(shmidcat_rd_fd)
-            os.dup2(tail_wr_fd, stdout_fd)
+            _ = os.dup2(tail_wr_fd, stdout_fd)
             os.execlp("tail", "tail", "-n", "+0", "-f", dump_path)
 
         os.close(tail_wr_fd)
@@ -720,8 +726,8 @@ def spawn_gtkwave_interactive(
         shmidcat_pid = os.fork()
         if not shmidcat_pid:
             os.close(gtkwave_rd_fd)
-            os.dup2(shmidcat_rd_fd, stdin_fd)
-            os.dup2(shmidcat_wr_fd, stdout_fd)
+            _ = os.dup2(shmidcat_rd_fd, stdin_fd)
+            _ = os.dup2(shmidcat_wr_fd, stdout_fd)
             os.execlp("shmidcat", "shmidcat")
 
         os.close(shmidcat_rd_fd)
@@ -729,15 +735,15 @@ def spawn_gtkwave_interactive(
 
         gtkwave_pid = os.fork()
         if not gtkwave_pid:
-            os.dup2(gtkwave_rd_fd, stdin_fd)
+            _ = os.dup2(gtkwave_rd_fd, stdin_fd)
             if quiet:
                 devnull = open(os.devnull, "w")
-                os.dup2(devnull.fileno(), stdout_fd)
-                os.dup2(devnull.fileno(), stderr_fd)
+                _ = os.dup2(devnull.fileno(), stdout_fd)
+                _ = os.dup2(devnull.fileno(), stderr_fd)
             os.execlp("gtkwave", "gtkwave", "--vcd", "--interactive", save_path)
 
         # The first forked process exists to do this cleanup...
-        os.waitpid(gtkwave_pid, 0)
+        _ = os.waitpid(gtkwave_pid, 0)
         os.kill(tail_pid, signal.SIGTERM)
         os.kill(shmidcat_pid, signal.SIGTERM)
         os._exit(0)
