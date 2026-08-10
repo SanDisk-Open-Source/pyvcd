@@ -1,8 +1,9 @@
 PyVCD
 =====
 
-The PyVCD package writes Value Change Dump (VCD) files as specified in
-IEEE 1364-2005.
+The PyVCD package writes and reads Value Change Dump (VCD) files as
+specified in clause 21.7 of IEEE 1800-2023, which supersedes IEEE
+1364-2005 without changing the VCD format.
 
 Read the `documentation <http://pyvcd.readthedocs.io/en/latest/>`_.
 
