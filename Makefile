@@ -10,6 +10,10 @@ lint-ruff:
 lint-mypy:
 	uv run --group type mypy
 
+.PHONY: lint-basedpyright
+lint-basedpyright:
+	uv run --group type basedpyright
+
 .PHONY: format
 format:
 	uv run --group lint ruff format
