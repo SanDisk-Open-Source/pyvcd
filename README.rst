@@ -58,3 +58,24 @@ Quick Start
    b10010 !
    #5
    r3.21 "
+
+PyVCD and the waveform ecosystem
+--------------------------------
+
+PyVCD is a pure-Python library for *producing* VCD files and their GTKWave
+companions, and for *tokenizing* VCD files exactly as written:
+
+* ``vcd.writer`` streams standard VCD from Python programs.
+* ``vcd.reader`` yields every declaration and value change as a typed token
+  with exact file locations, suiting linters, filters, and translators. It
+  tolerates the nonstandard output of real-world simulators.
+* ``vcd.gtkw`` generates GTKWave save files: trace layout, groups, combined
+  vectors, colors, and filters.
+
+PyVCD is deliberately not a bulk waveform reader. To load signal values
+from large VCD, FST, or GHW files, use `pywellen`_, the Python bindings of
+the Rust wellen library that powers the Surfer viewer. To produce FST,
+write VCD with PyVCD and convert with GTKWave's ``vcd2fst``, or have your
+simulator emit FST directly.
+
+.. _pywellen: https://pypi.org/project/pywellen/
