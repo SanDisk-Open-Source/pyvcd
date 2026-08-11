@@ -128,6 +128,7 @@ class VCDWriter:
         var_type: VarType | str,
         size: VariableSize | None = None,
         init: VarValue = None,
+        bit_index: int | tuple[int, int] | None = None,
     ) -> Variable[Any]:
         """Register a new VCD variable.
 
@@ -146,8 +147,14 @@ class VCDWriter:
             for those variable types.
         :type size: int or tuple(int) or None
         :param init: Optional initial value; defaults to 'x'.
+        :param bit_index:
+            Optional bit index or ``(msb, lsb)`` index range appended to the
+            variable's reference name, e.g. ``name[3]`` or ``name[7:0]``. A negative
+            LSB, e.g. ``name[2:-2]``, is a nonstandard convention for annotating the
+            integer and fractional parts of a fixed-point variable.
+        :type bit_index: int or tuple(int, int) or None
         :raises VCDPhaseError: if any values have been changed
-        :raises ValueError: for invalid var_type value
+        :raises ValueError: for invalid var_type or bit_index values
         :raises TypeError: for invalid parameter types
         :raises KeyError: for duplicate var name
         :returns: :class:`Variable` instance appropriate for use with :meth:`change()`.
@@ -159,12 +166,25 @@ class VCDWriter:
             raise VCDPhaseError("Cannot register after time 0.")
         var_type = VarType(var_type)
 
+        if bit_index is None:
+            ref = name
+        elif isinstance(bit_index, int):
+            ref = f"{name}[{bit_index}]"
+        elif (
+            isinstance(bit_index, tuple)  # pyright: ignore[reportUnnecessaryIsInstance]
+            and len(bit_index) == 2
+            and all(isinstance(index, int) for index in bit_index)  # pyright: ignore[reportUnnecessaryIsInstance]
+        ):
+            ref = f"{name}[{bit_index[0]}:{bit_index[1]}]"
+        else:
+            raise ValueError(f"Invalid bit_index ({bit_index!r})")
+
         scope_tuple = self._get_scope_tuple(scope)
 
         scope_names = self._scope_var_names.setdefault(scope_tuple, set())
-        if name in scope_names:
+        if ref in scope_names:
             raise KeyError(
-                f"Duplicate var {name} in scope {self._scope_sep.join(scope_tuple)}"
+                f"Duplicate var {ref} in scope {self._scope_sep.join(scope_tuple)}"
             )
 
         if size is None:
@@ -183,7 +203,7 @@ class VCDWriter:
 
         ident = _encode_identifier(self._next_var_id)
 
-        var_str = f"$var {var_type} {var_size} {ident} {name} $end"
+        var_str = f"$var {var_type} {var_size} {ident} {ref} $end"
 
         var: Variable[Any]
         if var_type == VarType.string:
@@ -236,7 +256,7 @@ class VCDWriter:
         self._vars.append(var)
         self._next_var_id += 1
         self._scope_var_strs.setdefault(scope_tuple, []).append(var_str)
-        scope_names.add(name)
+        scope_names.add(ref)
 
         return var
 

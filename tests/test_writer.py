@@ -395,6 +395,48 @@ def test_vcd_register_int(capsys: pytest.CaptureFixture[str]):
     assert "bx !" in out
 
 
+def test_vcd_register_var_with_bit_index(capsys: pytest.CaptureFixture[str]) -> None:
+    with VCDWriter(sys.stdout, date="") as vcd:
+        _ = vcd.register_var("scope", "b", "wire", 1, bit_index=3)
+        _ = vcd.register_var("scope", "v", "wire", 8, bit_index=(7, 0))
+        # A negative LSB annotates a fixed-point variable.
+        _ = vcd.register_var("scope", "fxp", "wire", 5, bit_index=(2, -2))
+        # Memory words are distinct references of a common name.
+        _ = vcd.register_var("scope", "mem", "wire", 8, bit_index=0)
+        _ = vcd.register_var("scope", "mem", "wire", 8, bit_index=1)
+    out = capsys.readouterr()[0]
+    assert "$var wire 1 ! b[3] $end" in out
+    assert '$var wire 8 " v[7:0] $end' in out
+    assert "$var wire 5 # fxp[2:-2] $end" in out
+    assert "$var wire 8 $ mem[0] $end" in out
+    assert "$var wire 8 % mem[1] $end" in out
+
+
+def test_vcd_register_var_duplicate_bit_index() -> None:
+    with VCDWriter(sys.stdout, date="") as vcd:
+        _ = vcd.register_var("scope", "mem", "wire", 8, bit_index=0)
+        # The bit index is part of the reference, so the same name may be
+        # registered with and without an index, but not twice with the same
+        # index.
+        _ = vcd.register_var("scope", "mem", "wire", 8)
+        with pytest.raises(KeyError):
+            _ = vcd.register_var("scope", "mem", "wire", 8, bit_index=0)
+
+
+@pytest.mark.parametrize("bit_index", ["3", (1,), (1, 2, 3), (1, "0"), 1.5])
+# The invalid arguments below are the subject of this test.
+def test_vcd_register_var_invalid_bit_index(bit_index: object) -> None:
+    with VCDWriter(sys.stdout, date="") as vcd:
+        with pytest.raises(ValueError):
+            _ = vcd.register_var(
+                "scope",
+                "v",
+                "wire",
+                8,
+                bit_index=bit_index,  # pyright: ignore[reportArgumentType]
+            )
+
+
 def test_vcd_register_int_tuple(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="") as vcd:
         _ = vcd.register_var("scope", "a", "integer", (8, 4, 1))
