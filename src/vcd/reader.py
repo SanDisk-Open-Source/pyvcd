@@ -88,9 +88,13 @@ class VarDecl(NamedTuple):
     bits, e.g. from ``ref [ 7 : 3 ]`` (MSB index then LSB index).
 
     Only the final bracketed section of a reference is a candidate bit
-    index, and only when its contents are decimal indices. Any earlier
-    bracketed sections belong to :attr:`reference`, as do brackets
-    within an escaped identifier."""
+    index, and only when its contents are possibly-negative decimal
+    indices. Any earlier bracketed sections belong to
+    :attr:`reference`, as do brackets within an escaped identifier.
+
+    Negative indices, e.g. ``ref[2:-2]``, are a nonstandard convention
+    for annotating the integer and fractional parts of a fixed-point
+    variable."""
 
     @property
     def ref_str(self) -> str:
@@ -561,8 +565,10 @@ def _split_bit_index(ref: str, start: int) -> tuple[str, None | int | tuple[int,
     Names such as ``mem_array[0]`` are indistinguishable from a bit
     index, so only the final bracketed section of *ref* is considered,
     and only from offset *start* onwards. A section is a bit index only
-    if it holds one or two decimal indices; anything else, including an
-    unbalanced bracket, stays part of the reference.
+    if it holds one or two possibly-negative decimal indices; anything
+    else, including an unbalanced bracket, stays part of the reference.
+    Negative indices, e.g. ``signal[2:-2]``, are a nonstandard
+    convention for annotating fixed-point variables.
 
     """
     if not ref.endswith("]"):
@@ -583,7 +589,9 @@ def _split_bit_index(ref: str, start: int) -> tuple[str, None | int | tuple[int,
         return ref, None
 
     indices = [index.strip() for index in ref[open_pos + 1 : -1].split(":")]
-    if len(indices) > 2 or not all(index.isdigit() for index in indices):
+    if len(indices) > 2 or not all(
+        index.removeprefix("-").isdigit() for index in indices
+    ):
         return ref, None
     elif len(indices) == 1:
         return ref[:open_pos], int(indices[0])

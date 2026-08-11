@@ -172,6 +172,12 @@ def test_parse_var_decl_from_standard():
         ("mem_array[0][177:0]", "mem_array[0]", (177, 0)),
         ("varname [1423][SOMENAME][2]", "varname[1423][SOMENAME]", 2),
         ("foo[0][1][2][4:3]", "foo[0][1][2]", (4, 3)),
+        # Negative indices annotate fixed-point variables, as rendered by
+        # waveform viewers such as Surfer.
+        ("fixed[2:-2]", "fixed", (2, -2)),
+        ("fixed [2:-2]", "fixed", (2, -2)),
+        ("fixed[-2]", "fixed", -2),
+        ("fixed[-]", "fixed[-]", None),
         # Nothing that fails to look like a bit index is split off.
         ("genblock[3].mod.sig", "genblock[3].mod.sig", None),
         ("uvm_pkg::thing", "uvm_pkg::thing", None),
