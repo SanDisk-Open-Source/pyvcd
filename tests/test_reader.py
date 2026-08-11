@@ -93,6 +93,13 @@ def test_parse_scope_decl_idents(ident: str) -> None:
     assert token.scope == ScopeDecl(ScopeType.module, ident)
 
 
+@pytest.mark.parametrize("scope_type", ScopeType)
+def test_parse_scope_decl_types(scope_type: ScopeType) -> None:
+    vcd = f"$scope {scope_type.value} foo $end".encode("ascii")
+    token = next(tokenize(io.BytesIO(vcd)))
+    assert token.scope == ScopeDecl(scope_type, "foo")
+
+
 def test_parse_scope_decl_without_ident():
     tokens = tokenize(io.BytesIO(b"$scope module $end"))
     with pytest.raises(VCDParseError) as e:
@@ -105,6 +112,13 @@ def test_parse_var_decl():
     token = next(tokens)
     assert token.var.type_ == VarType.integer
     assert token.var.ref_str == "foo[17]"
+
+
+@pytest.mark.parametrize("var_type", VarType)
+def test_parse_var_decl_types(var_type: VarType) -> None:
+    vcd = f"$var {var_type.value} 8 ! foo $end".encode("ascii")
+    token = next(tokenize(io.BytesIO(vcd)))
+    assert token.var == VarDecl(var_type, 8, "!", "foo", None)
 
 
 def test_parse_var_decl_with_dotted_ref():

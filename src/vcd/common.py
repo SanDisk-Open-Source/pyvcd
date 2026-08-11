@@ -13,17 +13,53 @@ else:
 
 
 class ScopeType(Enum):
-    """Valid VCD scope types."""
+    """Valid VCD scope types.
+
+    IEEE 1800-2023 specifies the `begin`, `fork`, `function`, `module`, and
+    `task` scope types. The remaining scope types are nonstandard, but are
+    emitted by SystemVerilog and VHDL simulation tools and accepted by
+    common VCD consumers such as GTKWave.
+
+    """
 
     begin = "begin"
     fork = "fork"
     function = "function"
     module = "module"
     task = "task"
+    # Nonstandard SystemVerilog scope types
+    class_ = "class"
+    clocking = "clocking"
+    generate = "generate"
+    interface = "interface"
+    package = "package"
+    program = "program"
+    struct = "struct"
+    sv_array = "sv_array"
+    union = "union"
+    # QuestaSim emits scopes of type "unknown"
+    unknown = "unknown"
+    # Nonstandard VHDL scope types emitted by GHDL, nvc, and fst2vcd
+    vhdl_architecture = "vhdl_architecture"
+    vhdl_block = "vhdl_block"
+    vhdl_for_generate = "vhdl_for_generate"
+    vhdl_function = "vhdl_function"
+    vhdl_generate = "vhdl_generate"
+    vhdl_if_generate = "vhdl_if_generate"
+    vhdl_package = "vhdl_package"
+    vhdl_procedure = "vhdl_procedure"
+    vhdl_process = "vhdl_process"
+    vhdl_record = "vhdl_record"
 
 
 class VarType(Enum):
-    """Valid VCD variable types."""
+    """Valid VCD variable types.
+
+    IEEE 1800-2023 specifies the variable types `event` through `wor`. The
+    remaining variable types are nonstandard, but are emitted by various
+    simulation tools and accepted by common VCD consumers such as GTKWave.
+
+    """
 
     event = "event"
     integer = "integer"
@@ -43,8 +79,19 @@ class VarType(Enum):
     wand = "wand"
     wire = "wire"
     wor = "wor"
-    string = "string"
+    # Nonstandard variable types
+    bit = "bit"
+    byte = "byte"
+    enum = "enum"
+    int = "int"
     logic = "logic"
+    longint = "longint"
+    port = "port"
+    real_parameter = "real_parameter"
+    shortint = "shortint"
+    shortreal = "shortreal"
+    sparray = "sparray"
+    string = "string"
 
     @override
     def __str__(self) -> str:
