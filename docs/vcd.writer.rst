@@ -16,6 +16,12 @@
 .. autoclass:: ScalarVariable
    :members:
 
+.. autoclass:: EventVariable
+   :members:
+
+.. autoclass:: StringVariable
+   :members:
+
 .. autoclass:: RealVariable
    :members:
 
