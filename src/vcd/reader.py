@@ -51,6 +51,8 @@ class TokenKind(Enum):
     CHANGE_VECTOR = 16
     CHANGE_REAL = 17
     CHANGE_STRING = 18
+    ATTRBEGIN = 19
+    ATTREND = 20
 
 
 class VarDecl(NamedTuple):
@@ -204,9 +206,9 @@ class Token(NamedTuple):
     "The start and end location of the token within the file/stream."
 
     data: (
-        None  # $enddefinitions $upscope $dump* $end
+        None  # $enddefinitions $upscope $dump* $end $attrend
         | int  # time change
-        | str  # $comment, $date, $version
+        | str  # $comment, $date, $version, $attrbegin
         | ScopeDecl  # $scope
         | Timescale  # $timescale
         | VarDecl  # $var
@@ -216,6 +218,19 @@ class Token(NamedTuple):
         | StringChange
     )
     "Data associated with the token. The data type depends on :attr:`kind`."
+
+    @property
+    def attr(self) -> str:
+        """Unstructured text from an ``$attrbegin`` declaration.
+
+        Attribute declarations are a nonstandard VCD extension emitted
+        by nvc and GTKWave's fst2vcd, carrying FST-style attributes such
+        as source locations and VHDL type information.
+
+        """
+        assert self.kind is TokenKind.ATTRBEGIN
+        assert isinstance(self.data, str)
+        return self.data
 
     @property
     def comment(self) -> str:
@@ -659,7 +674,16 @@ def _parse_token(s: _TokenizerState) -> Token:
         _ = s.advance()
         kw = s.take_identifier()
 
-        if kw == "comment":
+        if kw == "attrbegin":
+            # Nonstandard attribute declarations emitted by nvc and fst2vcd.
+            s.take_ws_after_kw(kw)
+            attr = s.take_to_end()
+            return Token(TokenKind.ATTRBEGIN, s.span(start), attr)
+        elif kw == "attrend":
+            s.take_ws_after_kw(kw)
+            s.take_end()
+            return Token(TokenKind.ATTREND, s.span(start), None)
+        elif kw == "comment":
             s.take_ws_after_kw(kw)
             comment = s.take_to_end()
             return Token(TokenKind.COMMENT, s.span(start), comment)

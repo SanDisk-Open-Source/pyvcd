@@ -365,13 +365,20 @@ def test_var_decl_reference_starting_with_dollar() -> None:
     assert str(e.value).startswith("1:16: Expected variable reference")
 
 
-def test_attrbegin_keyword() -> None:
+def test_attr_declarations() -> None:
     # GTKWave's fst2vcd and nvc extend VCD with $attrbegin/$attrend
     # declarations carrying FST-style attributes.
-    tokens = tokenize(io.BytesIO(b"$attrbegin misc 03 /src/tb.vhdl 1 $end"))
-    with pytest.raises(VCDParseError) as e:
-        _ = next(tokens)
-    assert str(e.value).startswith("1:11: invalid keyword $attrbegin")
+    vcd = (
+        b"$attrbegin misc 03 /src/tb.vhdl 1 $end\n"
+        b"$attrbegin misc 02 STD_LOGIC 1030 $end\n"
+        b"$var logic 1 ! clk $end\n"
+        b"$attrend $end\n"
+    )
+    tokens = tokenize(io.BytesIO(vcd))
+    assert next(tokens).attr == "misc 03 /src/tb.vhdl 1"
+    assert next(tokens).attr == "misc 02 STD_LOGIC 1030"
+    assert next(tokens).var == VarDecl(VarType.logic, 1, "!", "clk", None)
+    assert next(tokens).kind is TokenKind.ATTREND
 
 
 @pytest.mark.parametrize("buf_size", range(1, 400))
