@@ -373,6 +373,66 @@ def test_gtkw_trace_bits_highlight(gtkw: GTKWSave):
     ]
 
 
+def test_gtkw_trace_combined(gtkw: GTKWSave):
+    gtkw.trace_combined(
+        "valid_data", ["a.b.valid", (7, "a.b.data[7:0]"), (6, "a.b.data[7:0]")]
+    )
+    lines = gtkw_output(gtkw).splitlines()
+
+    assert lines == [
+        "@800022",
+        "#{valid_data} a.b.valid (7)a.b.data[7:0] (6)a.b.data[7:0]",
+        "@1001200",
+        "-group_end",
+    ]
+
+
+def test_gtkw_trace_combined_highlight(gtkw: GTKWSave):
+    # The flags match those saved by GTKWave itself for a highlighted
+    # combine-down of binary-formatted traces.
+    gtkw.trace_combined(
+        "cp_i1",
+        ["tb.completed", (0, "tb.itag[0:6]"), (1, "tb.itag[0:6]")],
+        datafmt="bin",
+        highlight=True,
+    )
+    lines = gtkw_output(gtkw).splitlines()
+
+    assert lines == [
+        "@800029",
+        "#{cp_i1} tb.completed (0)tb.itag[0:6] (1)tb.itag[0:6]",
+        "@1001201",
+        "-group_end",
+    ]
+
+
+def test_gtkw_trace_combined_filters(gtkw: GTKWSave):
+    gtkw.trace_combined(
+        "quux",
+        ["a.b.x", "a.b.y"],
+        alias="myvec",
+        color=GTKWColor.yellow,
+        transaction_filter_proc="gtkf.py",
+    )
+    lines = gtkw_output(gtkw).splitlines()
+
+    assert lines == [
+        "@10800022",
+        "[color] 3",
+        "^<1 gtkf.py",
+        "+{myvec} #{quux} a.b.x a.b.y",
+        "@1001200",
+        "-group_end",
+    ]
+
+
+def test_gtkw_trace_combined_invalid(gtkw: GTKWSave):
+    with pytest.raises(ValueError):
+        gtkw.trace_combined("empty", [])
+    with pytest.raises(ValueError):
+        gtkw.trace_combined("badfmt", ["a.b.x"], datafmt="InVaLiD")
+
+
 def test_gtkw_trace_bits_extra(gtkw: GTKWSave):
     name = "a.b.c[1:0]"
     with gtkw.trace_bits(name, extraflags=GTKWFlag.invert):

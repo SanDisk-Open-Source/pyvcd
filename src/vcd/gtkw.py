@@ -590,6 +590,85 @@ class GTKWSave:
             self._p(f"+{{{alias}}} ", end="")
         self._p(f"({index}){name}")
 
+    def trace_combined(
+        self,
+        name: str,
+        signals: Sequence[str | tuple[int, str]],
+        alias: str | None = None,
+        color: GTKWColor | str | int | None = None,
+        datafmt: str = "hex",
+        highlight: bool = False,
+        rjustify: bool = True,
+        extraflags: GTKWFlag = GTKWFlag.none,
+        translate_filter_file: str | None = None,
+        translate_filter_proc: str | None = None,
+        transaction_filter_proc: str | None = None,
+    ) -> None:
+        """Add a combined signal trace to save file.
+
+        A combined trace displays multiple signals as a single vector, with
+        *signals* concatenated most-significant first. This corresponds to
+        GTKWave's Combine Down (F4) operation, and is useful for viewing
+        related signals as one value, especially in conjunction with a
+        translate or transaction filter. E.g.:
+
+            >>> import io
+            >>> gtkw = GTKWSave(io.StringIO())
+            >>> gtkw.trace_combined(
+            ...     "valid_data", ["a.b.valid", (7, "a.b.data"), (6, "a.b.data")]
+            ... )
+
+        :param str name: display name of the combined vector.
+        :param signals: signals to combine, most-significant first. Each
+            signal is either the fully-qualified name of a scalar signal or an
+            `(index, name)` pair selecting a single bit of a vector signal.
+        :type signals: Sequence[str | tuple[int, str]]
+        :param str alias: optional alias to display instead of the *name*.
+        :param GTKWColor color: optional color to use for the combined trace.
+        :param str datafmt: the format used for data display. Must be one of 'hex',
+                            'dec', 'bin', 'oct', 'ascii', 'real', or 'signed'.
+        :param bool highlight: trace should be highlighted at GTKWave startup.
+        :param bool rjustify: trace name/alias should be right-justified.
+        :param GTKWFlag extraflags: extra flags to apply to the trace.
+        :param str translate_filter_file: path to translate filter file.
+        :param str translate_filter_proc: path to translate filter executable.
+        :param str transaction_filter_proc: path to transaction filter executable.
+
+        """
+        if not signals:
+            raise ValueError("Empty signals sequence")
+        if datafmt not in ["hex", "dec", "bin", "oct", "ascii", "real", "signed"]:
+            raise ValueError(f"Invalid datafmt ({datafmt})")
+        flags = GTKWFlag.__members__[datafmt] | GTKWFlag.grp_begin | extraflags
+        if highlight:
+            flags |= GTKWFlag.highlight
+        if rjustify:
+            flags |= GTKWFlag.rjustify
+        if translate_filter_file:
+            flags |= GTKWFlag.ftranslated
+        if translate_filter_proc:
+            flags |= GTKWFlag.ptranslated
+        if transaction_filter_proc:
+            flags |= GTKWFlag.ttranslated
+        self._set_flags(flags)
+        self._set_color(color)
+        self._set_translate_filter_file(translate_filter_file)
+        self._set_translate_filter_proc(translate_filter_proc)
+        self._set_transaction_filter_proc(transaction_filter_proc)
+        if alias:
+            self._p(f"+{{{alias}}} ", end="")
+        members = " ".join(
+            signal if isinstance(signal, str) else f"({signal[0]}){signal[1]}"
+            for signal in signals
+        )
+        self._p(f"#{{{name}}} {members}")
+
+        flags = GTKWFlag.blank | GTKWFlag.grp_end | GTKWFlag.collapsed
+        if highlight:
+            flags |= GTKWFlag.highlight
+        self._set_flags(flags)
+        self._p("-group_end")
+
 
 TranslationType = tuple[int | str, str] | tuple[int | str, str, str | int]
 
