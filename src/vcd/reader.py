@@ -115,7 +115,7 @@ class ScopeDecl(NamedTuple):
     """
 
     type_: ScopeType  #: Type of scope
-    ident: str  #: Scope name
+    ident: str  #: Scope name; empty for unnamed scopes
 
 
 class VectorChange(NamedTuple):
@@ -477,13 +477,21 @@ class _TokenizerState:
         return chars
 
     def take_scope_ident(self) -> str:
+        # Consumes the declaration's terminating $end along with the
+        # identifier: a scope name may start with '$', as in the "$unit"
+        # scopes emitted by VCS, so only a whole token spelled "$end"
+        # terminates the declaration, denoting an unnamed scope.
         c = self.buf[self.pos]
         if c == 92:  # '\'
-            return bytes(self.take_escaped_identifier()).decode("ascii")
-        elif c == 36:  # '$'
-            raise VCDParseError(self.loc, "Expected scope identifier")
+            ident = bytes(self.take_escaped_identifier()).decode("ascii")
+            self.take_end()
         else:
-            return bytes(self.take_name_chars()).decode("ascii")
+            ident = bytes(self.take_name_chars()).decode("ascii")
+            if ident == "$end":
+                ident = ""
+            else:
+                self.take_end()
+        return ident
 
     def take_var_ref(self) -> tuple[str, None | int | tuple[int, int]]:
         c = self.buf[self.pos]
@@ -492,10 +500,14 @@ class _TokenizerState:
             # An escaped identifier is opaque; brackets within it are part of
             # the name and never a bit index.
             index_start = len(chars)
-        elif c == 36:  # '$'
-            raise VCDParseError(self.loc, "Expected variable reference")
         else:
+            # A reference may start with '$', as in the "$signal" names
+            # emitted by Amaranth and Yosys, but a reference is required, so
+            # a whole token spelled "$end" is the declaration's terminator.
+            loc = self.loc
             chars = self.take_name_chars()
+            if bytes(chars) == b"$end":
+                raise VCDParseError(loc, "Expected variable reference")
             index_start = 0
 
         while self.skip_ws() == 91:  # '['
@@ -709,8 +721,6 @@ def _parse_token(s: _TokenizerState) -> Token:
             _ = s.skip_ws()
 
             scope_ident = s.take_scope_ident()
-
-            s.take_end()
 
             scope_decl = ScopeDecl(scope_type, scope_ident)
 

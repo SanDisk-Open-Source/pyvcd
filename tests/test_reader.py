@@ -101,10 +101,17 @@ def test_parse_scope_decl_types(scope_type: ScopeType) -> None:
 
 
 def test_parse_scope_decl_without_ident():
+    # Verilator and other tools emit unnamed scopes.
     tokens = tokenize(io.BytesIO(b"$scope module $end"))
-    with pytest.raises(VCDParseError) as e:
-        _ = next(tokens)
-    assert str(e.value).startswith("1:15: Expected scope identifier")
+    token = next(tokens)
+    assert token.scope == ScopeDecl(ScopeType.module, "")
+
+
+def test_parse_scope_decl_with_escaped_end_ident():
+    # An escaped identifier is opaque, so it may spell "$end".
+    tokens = tokenize(io.BytesIO(b"$scope module \\$end $end"))
+    token = next(tokens)
+    assert token.scope == ScopeDecl(ScopeType.module, "$end")
 
 
 def test_parse_var_decl():
@@ -348,21 +355,20 @@ def test_nonstandard_timescale_magnitude() -> None:
     assert str(e.value).startswith("1:15: Invalid $timescale magnitude: 244")
 
 
-def test_scope_ident_starting_with_dollar() -> None:
+@pytest.mark.parametrize("ident", ["$unit", "$ivl_for_loop0"])
+def test_scope_ident_starting_with_dollar(ident: str) -> None:
     # VCS names the SystemVerilog compilation-unit scope "$unit"; Icarus
     # Verilog emits synthetic scopes such as "$ivl_for_loop0".
-    tokens = tokenize(io.BytesIO(b"$scope module $unit $end"))
-    with pytest.raises(VCDParseError) as e:
-        _ = next(tokens)
-    assert str(e.value).startswith("1:15: Expected scope identifier")
+    vcd = f"$scope module {ident} $end".encode("ascii")
+    token = next(tokenize(io.BytesIO(vcd)))
+    assert token.scope == ScopeDecl(ScopeType.module, ident)
 
 
 def test_var_decl_reference_starting_with_dollar() -> None:
     # Amaranth and Yosys emit synthetic variable names such as "$signal".
     tokens = tokenize(io.BytesIO(b"$var wire 32 # $signal $end"))
-    with pytest.raises(VCDParseError) as e:
-        _ = next(tokens)
-    assert str(e.value).startswith("1:16: Expected variable reference")
+    token = next(tokens)
+    assert token.var == VarDecl(VarType.wire, 32, "#", "$signal", None)
 
 
 def test_attr_declarations() -> None:
