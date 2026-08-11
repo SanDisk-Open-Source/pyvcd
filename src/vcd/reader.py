@@ -119,10 +119,12 @@ class ScopeDecl(NamedTuple):
 class VectorChange(NamedTuple):
     """Vector value change descriptor.
 
-    A vector value consists of multiple 4-state values, where the four
-    states are 0, 1, X, and Z. When a vector value consists entirely
-    of 0 and 1 states, :attr:`value` will be an int. Otherwise
-    :attr:`value` will be a str.
+    A vector value consists of multiple state values. IEEE 1800
+    specifies the four states 0, 1, X, and Z; VHDL simulators such as
+    GHDL also emit the nine-state std_logic values, which add U, W, L,
+    H, and -. When a vector value consists entirely of 0 and 1 states,
+    :attr:`value` will be an int. Otherwise :attr:`value` will be a str
+    with letter case preserved from the VCD stream.
 
     """
 
@@ -140,8 +142,10 @@ class RealChange(NamedTuple):
 class ScalarChange(NamedTuple):
     """Scalar value change descriptor.
 
-    A scalar is a single 4-state value. The value is one of '0', '1',
-    'X', or 'Z'.
+    A scalar is a single value. IEEE 1800 specifies the four states '0',
+    '1', 'X', and 'Z'. VHDL simulators such as GHDL also emit the
+    nine-state std_logic values, which add 'U', 'W', 'L', 'H', and '-'.
+    Letter case is preserved from the VCD stream.
 
     """
 
@@ -519,6 +523,11 @@ def _is_ws(c: int) -> bool:
     return c == 32 or 9 <= c <= 13
 
 
+# Value state characters: the IEEE 1800 four-state values plus the VHDL
+# std_logic states emitted by GHDL and other VHDL simulators.
+_STATE_CHARS = frozenset(b"01xXzZuUwWhHlL-")
+
+
 def _split_bit_index(ref: str, start: int) -> tuple[str, None | int | tuple[int, int]]:
     """Split a trailing bit index from a variable reference.
 
@@ -563,8 +572,7 @@ def _parse_token(s: _TokenizerState) -> Token:
         _ = s.advance()
         time = s.take_decimal()
         return Token(TokenKind.CHANGE_TIME, s.span(start), time)
-    elif c == 48 or c == 49 or c == 122 or c == 90 or c == 120 or c == 88:
-        # c in '01zZxX'
+    elif c in _STATE_CHARS:
         # Parse scalar change
         scalar_value = chr(c)
         _ = s.advance()
@@ -575,25 +583,21 @@ def _parse_token(s: _TokenizerState) -> Token:
     elif c == 66 or c == 98:  # 'B' or 'b'
         # Parse vector change
         vector: list[int] = []
+        binary = True
         c = s.advance()
-        while c == 48 or c == 49:  # '0' or '1'
+        while c in _STATE_CHARS:
+            if c != 48 and c != 49:  # not '0' or '1'
+                binary = False
             vector.append(c)
             c = s.advance()
-        vector_value: int | str
 
-        if c == 122 or c == 90 or c == 120 or c == 88:  # c in 'zZxX'
-            vector.append(c)
-            c = s.advance()
-            while (
-                c == 48 or c == 49 or c == 122 or c == 90 or c == 120 or c == 88
-            ):  # c in '01zZxX'
-                vector.append(c)
-                c = s.advance()
-            vector_value = bytes(vector).decode("ascii")
-        elif vector:
+        vector_value: int | str
+        if not vector:
+            raise VCDParseError(s.loc, "Expected vector value")
+        elif binary:
             vector_value = int(bytes(vector), 2)
         else:
-            raise VCDParseError(s.loc, "Expected vector value")
+            vector_value = bytes(vector).decode("ascii")
 
         if not _is_ws(c):
             raise VCDParseError(s.loc, "Expected whitespace after vector value")

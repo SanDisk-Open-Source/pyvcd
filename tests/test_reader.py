@@ -220,10 +220,30 @@ def test_empty_vector_change() -> None:
     assert str(e.value).startswith("1:2: Expected vector value")
 
 
+@pytest.mark.parametrize("value", "01xXzZuUwWhHlL-")
+def test_scalar_change_states(value: str) -> None:
+    # In addition to the IEEE 1800 four-state values, VHDL simulators
+    # such as GHDL emit nine-state std_logic values.
+    tokens = tokenize(io.BytesIO(f"{value}!".encode("ascii")))
+    token = next(tokens)
+    assert token.scalar_change == ScalarChange("!", value)
+
+
 def test_nine_state_vector_change() -> None:
-    # GHDL dumps uninitialized std_logic vectors as `bUUUU`. Only the four
-    # states 0, 1, X, and Z are valid; the vector value must not be empty.
+    # GHDL dumps uninitialized std_logic vectors as `bUUUU`.
     tokens = tokenize(io.BytesIO(b"bUUUU !"))
+    token = next(tokens)
+    assert token.vector_change == VectorChange("!", "UUUU")
+
+
+def test_all_states_vector_change() -> None:
+    tokens = tokenize(io.BytesIO(b"b01xXzZuUwWhHlL- !"))
+    token = next(tokens)
+    assert token.vector_change == VectorChange("!", "01xXzZuUwWhHlL-")
+
+
+def test_invalid_vector_change() -> None:
+    tokens = tokenize(io.BytesIO(b"bG !"))
     with pytest.raises(VCDParseError) as e:
         _ = next(tokens)
     assert str(e.value).startswith("1:2: Expected vector value")
@@ -379,6 +399,8 @@ def test_comprehensive(buf_size: int) -> None:
         0!
         #42
         b1zzz "
+        l!
+        bU-wl "
         #50
         r1e-10 #
         #999
@@ -417,6 +439,8 @@ def test_comprehensive(buf_size: int) -> None:
     assert next(tokens).scalar_change == ScalarChange("!", "0")
     assert next(tokens).time_change == 42
     assert next(tokens).vector_change == VectorChange('"', "1zzz")
+    assert next(tokens).scalar_change == ScalarChange("!", "l")
+    assert next(tokens).vector_change == VectorChange('"', "U-wl")
     assert next(tokens).time_change == 50
     assert next(tokens).real_change == RealChange("#", 1e-10)
     assert next(tokens).time_change == 999
