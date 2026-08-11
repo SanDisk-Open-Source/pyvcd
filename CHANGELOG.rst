@@ -1,6 +1,64 @@
 Changelog
 =========
 
+pyvcd-0.5.0 (2026-08-11)
+------------------------
+* Breaking changes:
+
+  * Raise the minimum supported Python version to 3.10
+  * Model `Timescale.magnitude` as a plain `int`. `TimescaleMagnitude` remains
+    as an `IntEnum` whose members compare equal to their integer values, but
+    code such as `timescale.magnitude.value` must become
+    `timescale.magnitude`.
+
+* Reader features, aligning `vcd.reader` with the corpus of real-world VCD
+  files collected by the `wellen`__ waveform library:
+
+  * Accept the nonstandard SystemVerilog and VHDL scope and variable types
+    emitted by GHDL, nvc, Verilator, QuestaSim, and fst2vcd
+  * Accept nine-state std_logic values, e.g. ``bUUUU``, in scalar and vector
+    value changes
+  * Accept empty vector values, e.g. ``b !``, emitted by GHDL for zero-width
+    variables
+  * Accept float time changes with zero fractional parts, e.g. ``#3.0``,
+    emitted by Migen
+  * Accept any positive integer timescale magnitude, not just 1, 10, and 100
+  * Accept scope and variable names starting with ``$``, e.g. VCS's
+    ``$unit``, as well as unnamed scopes
+  * Tokenize the ``$attrbegin``/``$attrend`` attribute extension emitted by
+    nvc and fst2vcd
+  * Split possibly-negative bit indices, e.g. ``signal[2:-2]``, from variable
+    references
+
+  __ https://github.com/ekiwi/wellen
+
+* Other features:
+
+  * Add `bit_index` parameter to `VCDWriter.register_var()` for references
+    such as ``mem[0]`` and fixed-point annotations such as ``signal[2:-2]``
+    (#5, #37)
+  * Accept nonstandard timescale magnitudes in `VCDWriter`, keeping the
+    writer able to re-emit anything the reader accepts
+  * Add nonstandard `as` (attosecond) and `zs` (zeptosecond) timescale units
+  * Add `GTKWSave.trace_combined()` for combined vector traces, as created by
+    GTKWave's Combine Down operation (#23)
+  * Add `transaction_filter_proc` parameter to `GTKWSave.trace()`,
+    `trace_bits()`, and `trace_combined()` for GTKWave transaction filter
+    processes (#23)
+
+* Repairs:
+
+  * Raise `VCDParseError` instead of `ValueError` for vector value changes
+    with no value digits
+  * Correct the `GTKWSave.zoom_markers()` keyword annotation
+  * Name the empty set of GTKWave trace flags `GTKWFlag.none`
+
+* Development environment changes:
+
+  * Manage the project, virtualenvs, and compatibility matrix with uv and
+    tox-uv
+  * Check types with basedpyright in addition to mypy
+
 pyvcd-0.4.2 (2026-08-09)
 ------------------------
 * fix: accept special characters in reader scope and variable names (#22, #35)
