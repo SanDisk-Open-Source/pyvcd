@@ -213,11 +213,10 @@ def test_vector_change():
 
 
 def test_empty_vector_change() -> None:
-    # GHDL emits `b !` for zero-width variables.
+    # GHDL emits `b !` for zero-width variables; the empty value is zero.
     tokens = tokenize(io.BytesIO(b"b !"))
-    with pytest.raises(VCDParseError) as e:
-        _ = next(tokens)
-    assert str(e.value).startswith("1:2: Expected vector value")
+    token = next(tokens)
+    assert token.vector_change == VectorChange("!", 0)
 
 
 @pytest.mark.parametrize("value", "01xXzZuUwWhHlL-")
@@ -320,19 +319,24 @@ def test_unknown_keyword() -> None:
 
 
 def test_fractional_time_change() -> None:
+    # Times are integral; a nonzero fractional part cannot be represented.
     tokens = tokenize(io.BytesIO(b"#3.2\n0!"))
-    assert next(tokens).time_change == 3
-    with pytest.raises(VCDParseError):
+    with pytest.raises(VCDParseError) as e:
         _ = next(tokens)
+    assert str(e.value).startswith("1:4: Expected zero fraction in time change")
 
 
 def test_integral_float_time_change() -> None:
     # Migen emits float time changes with zero fractional parts, e.g. "#3.0".
-    # Some readers, including wellen, accept them; pyvcd does not.
     tokens = tokenize(io.BytesIO(b"#3.0\n0!"))
     assert next(tokens).time_change == 3
-    with pytest.raises(VCDParseError):
-        _ = next(tokens)
+    assert next(tokens).scalar_change == ScalarChange("!", "0")
+
+
+def test_bare_fraction_time_change() -> None:
+    tokens = tokenize(io.BytesIO(b"#3.\n0!"))
+    assert next(tokens).time_change == 3
+    assert next(tokens).scalar_change == ScalarChange("!", "0")
 
 
 def test_nonstandard_timescale_magnitude() -> None:
@@ -401,7 +405,8 @@ def test_comprehensive(buf_size: int) -> None:
         b1zzz "
         l!
         bU-wl "
-        #50
+        #50.0
+        b &
         r1e-10 #
         #999
         sbye $
@@ -442,6 +447,7 @@ def test_comprehensive(buf_size: int) -> None:
     assert next(tokens).scalar_change == ScalarChange("!", "l")
     assert next(tokens).vector_change == VectorChange('"', "U-wl")
     assert next(tokens).time_change == 50
+    assert next(tokens).vector_change == VectorChange("&", 0)
     assert next(tokens).real_change == RealChange("#", 1e-10)
     assert next(tokens).time_change == 999
     assert next(tokens).string_change == StringChange("$", "bye")

@@ -571,6 +571,14 @@ def _parse_token(s: _TokenizerState) -> Token:
         # Parse time change
         _ = s.advance()
         time = s.take_decimal()
+        if s.buf[s.pos] == 46:  # '.'
+            # Migen emits time changes with a zero fractional part, e.g.
+            # "#3.0". Times are integral, so a nonzero fraction is an error.
+            c = s.advance(raise_on_eof=False)
+            while 48 <= c <= 57:  # '0' <= c <= '9'
+                if c != 48:  # '0'
+                    raise VCDParseError(s.loc, "Expected zero fraction in time change")
+                c = s.advance(raise_on_eof=False)
         return Token(TokenKind.CHANGE_TIME, s.span(start), time)
     elif c in _STATE_CHARS:
         # Parse scalar change
@@ -593,7 +601,11 @@ def _parse_token(s: _TokenizerState) -> Token:
 
         vector_value: int | str
         if not vector:
-            raise VCDParseError(s.loc, "Expected vector value")
+            if _is_ws(c):
+                # GHDL emits `b` with no value digits for zero-width variables.
+                vector_value = 0
+            else:
+                raise VCDParseError(s.loc, "Expected vector value")
         elif binary:
             vector_value = int(bytes(vector), 2)
         else:
