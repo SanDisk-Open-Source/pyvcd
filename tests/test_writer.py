@@ -38,6 +38,8 @@ def test_vcd_init():
         ("100ps", "100 ps"),
         ((TimescaleMagnitude.ten, TimescaleUnit.femtosecond), "10 fs"),
         (Timescale(TimescaleMagnitude.hundred, TimescaleUnit.millisecond), "100 ms"),
+        ("1 as", "1 as"),
+        ("10zs", "10 zs"),
     ],
 )
 def test_vcd_timescales(

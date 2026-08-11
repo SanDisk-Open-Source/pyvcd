@@ -107,7 +107,13 @@ class TimescaleMagnitude(Enum):
 
 
 class TimescaleUnit(Enum):
-    """Valid timescale units."""
+    """Valid timescale units.
+
+    IEEE 1800-2023 specifies the units `s` through `fs`. The `as` and
+    `zs` units are nonstandard extensions supported by FST-based tools
+    such as GTKWave.
+
+    """
 
     second = "s"
     millisecond = "ms"
@@ -115,6 +121,8 @@ class TimescaleUnit(Enum):
     nanosecond = "ns"
     picosecond = "ps"
     femtosecond = "fs"
+    attosecond = "as"
+    zeptosecond = "zs"
 
 
 class Timescale(NamedTuple):

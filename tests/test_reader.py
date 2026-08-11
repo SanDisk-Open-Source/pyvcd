@@ -114,6 +114,13 @@ def test_parse_scope_decl_with_escaped_end_ident():
     assert token.scope == ScopeDecl(ScopeType.module, "$end")
 
 
+@pytest.mark.parametrize("unit", TimescaleUnit)
+def test_parse_timescale_units(unit: TimescaleUnit) -> None:
+    vcd = f"$timescale 1 {unit.value} $end".encode("ascii")
+    token = next(tokenize(io.BytesIO(vcd)))
+    assert token.timescale == Timescale(TimescaleMagnitude.one, unit)
+
+
 def test_parse_var_decl():
     tokens = tokenize(io.BytesIO(b"$var integer 8 ! foo [17] $end"))
     token = next(tokens)
