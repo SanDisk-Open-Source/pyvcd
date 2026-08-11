@@ -215,6 +215,127 @@ def test_nine_state_vector_change() -> None:
     assert str(e.value).startswith("1:2: Expected vector value")
 
 
+# The following tests exercise constructs observed in real-world VCD files
+# collected in the test corpus of wellen (https://github.com/ekiwi/wellen),
+# a Rust waveform parsing library. Each test notes the tool that emits the
+# construct in question.
+
+
+def test_id_code_starting_with_hash() -> None:
+    # An id code may start with '#' even though '#' also introduces time
+    # change tokens; the scalar value and id code are not separated.
+    tokens = tokenize(io.BytesIO(b"1#2!"))
+    token = next(tokens)
+    assert token.scalar_change == ScalarChange("#2!", "1")
+
+
+def test_id_code_of_punctuation() -> None:
+    tokens = tokenize(io.BytesIO(b'x(i"'))
+    token = next(tokens)
+    assert token.scalar_change == ScalarChange('(i"', "x")
+
+
+def test_var_decl_reference_starting_with_digit() -> None:
+    # Some SystemVerilog simulators emit synthetic names such as "598.tmp".
+    tokens = tokenize(io.BytesIO(b"$var wire 104 8 598.tmp $end"))
+    token = next(tokens)
+    assert token.var == VarDecl(VarType.wire, 104, "8", "598.tmp", None)
+
+
+def test_multiline_declarations() -> None:
+    # Aldec and ModelSim spread declarations over multiple lines.
+    vcd = b"$timescale\n\t1ns\n$end\n$scope module tb $end"
+    tokens = tokenize(io.BytesIO(vcd))
+    assert next(tokens).timescale == Timescale(
+        TimescaleMagnitude.one, TimescaleUnit.nanosecond
+    )
+    assert next(tokens).scope == ScopeDecl(ScopeType.module, "tb")
+
+
+def test_comment_between_var_decls() -> None:
+    # ModelSim may interleave $comment declarations with $var declarations.
+    vcd = b'$var reg 1 ! clk $end $comment foo $end $var reg 1 " reset $end'
+    tokens = tokenize(io.BytesIO(vcd))
+    assert next(tokens).var == VarDecl(VarType.reg, 1, "!", "clk", None)
+    assert next(tokens).comment == "foo"
+    assert next(tokens).var == VarDecl(VarType.reg, 1, '"', "reset", None)
+
+
+def test_duplicate_id_codes() -> None:
+    # An id code may be shared by multiple variables, aliasing one value
+    # change to all of them.
+    vcd = b"$var wire 1 ! clk $end $var wire 1 ! clock $end"
+    tokens = tokenize(io.BytesIO(vcd))
+    assert next(tokens).var.id_code == "!"
+    assert next(tokens).var.id_code == "!"
+
+
+def test_scalar_change_with_ws_before_id_code() -> None:
+    # A scalar value must be immediately followed by its id code.
+    tokens = tokenize(io.BytesIO(b"1 $"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:2: Expected id code")
+
+
+def test_unknown_keyword() -> None:
+    tokens = tokenize(io.BytesIO(b"$crash\n$version foo $end"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("2:1: invalid keyword $crash")
+
+
+def test_fractional_time_change() -> None:
+    tokens = tokenize(io.BytesIO(b"#3.2\n0!"))
+    assert next(tokens).time_change == 3
+    with pytest.raises(VCDParseError):
+        _ = next(tokens)
+
+
+def test_integral_float_time_change() -> None:
+    # Migen emits float time changes with zero fractional parts, e.g. "#3.0".
+    # Some readers, including wellen, accept them; pyvcd does not.
+    tokens = tokenize(io.BytesIO(b"#3.0\n0!"))
+    assert next(tokens).time_change == 3
+    with pytest.raises(VCDParseError):
+        _ = next(tokens)
+
+
+def test_nonstandard_timescale_magnitude() -> None:
+    # Only magnitudes 1, 10, and 100 are valid, but magnitudes such as
+    # "244" have been observed in the wild.
+    tokens = tokenize(io.BytesIO(b"$timescale 244 ns $end"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:15: Invalid $timescale magnitude: 244")
+
+
+def test_scope_ident_starting_with_dollar() -> None:
+    # VCS names the SystemVerilog compilation-unit scope "$unit"; Icarus
+    # Verilog emits synthetic scopes such as "$ivl_for_loop0".
+    tokens = tokenize(io.BytesIO(b"$scope module $unit $end"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:15: Expected scope identifier")
+
+
+def test_var_decl_reference_starting_with_dollar() -> None:
+    # Amaranth and Yosys emit synthetic variable names such as "$signal".
+    tokens = tokenize(io.BytesIO(b"$var wire 32 # $signal $end"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:16: Expected variable reference")
+
+
+def test_attrbegin_keyword() -> None:
+    # GTKWave's fst2vcd and nvc extend VCD with $attrbegin/$attrend
+    # declarations carrying FST-style attributes.
+    tokens = tokenize(io.BytesIO(b"$attrbegin misc 03 /src/tb.vhdl 1 $end"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:11: invalid keyword $attrbegin")
+
+
 @pytest.mark.parametrize("buf_size", range(1, 400))
 def test_comprehensive(buf_size: int) -> None:
     vcd = """\
