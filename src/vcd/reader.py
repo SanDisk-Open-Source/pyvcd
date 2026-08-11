@@ -14,7 +14,7 @@ parses a binary VCD stream, yielding tokens as they are encountered.
    >>> assert token.date == "today"
    >>> token = next(tokens)
    >>> assert token.kind is TokenKind.TIMESCALE
-   >>> assert token.timescale.magnitude.value == 1
+   >>> assert token.timescale.magnitude == 1
    >>> assert token.timescale.unit.value == "ns"
 
 """
@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import NamedTuple
 
-from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
+from vcd.common import ScopeType, Timescale, TimescaleUnit, VarType
 
 
 class TokenKind(Enum):
@@ -728,20 +728,7 @@ def _parse_token(s: _TokenizerState) -> Token:
         elif kw == "timescale":
             s.take_ws_after_kw(kw)
             _ = s.skip_ws()
-            mag_int = s.take_decimal()
-
-            try:
-                magnitude = TimescaleMagnitude(mag_int)
-            except ValueError:
-                valid_magnitudes = ", ".join(str(m.value) for m in TimescaleMagnitude)
-                raise VCDParseError(
-                    s.loc,
-                    (
-                        f"Invalid $timescale magnitude: {mag_int}. "
-                        f"Must be one of: {valid_magnitudes}."
-                    ),
-                ) from None
-
+            magnitude = s.take_decimal()
             _ = s.skip_ws()
             unit_str = s.take_identifier()
             try:

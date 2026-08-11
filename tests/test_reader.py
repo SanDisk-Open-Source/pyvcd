@@ -354,12 +354,11 @@ def test_bare_fraction_time_change() -> None:
 
 
 def test_nonstandard_timescale_magnitude() -> None:
-    # Only magnitudes 1, 10, and 100 are valid, but magnitudes such as
-    # "244" have been observed in the wild.
+    # IEEE 1800-2023 allows only the magnitudes 1, 10, and 100, but
+    # magnitudes such as "244" have been observed in the wild.
     tokens = tokenize(io.BytesIO(b"$timescale 244 ns $end"))
-    with pytest.raises(VCDParseError) as e:
-        _ = next(tokens)
-    assert str(e.value).startswith("1:15: Invalid $timescale magnitude: 244")
+    token = next(tokens)
+    assert token.timescale == Timescale(244, TimescaleUnit.nanosecond)
 
 
 @pytest.mark.parametrize("ident", ["$unit", "$ivl_for_loop0"])

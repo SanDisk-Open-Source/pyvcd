@@ -40,6 +40,10 @@ def test_vcd_init():
         (Timescale(TimescaleMagnitude.hundred, TimescaleUnit.millisecond), "100 ms"),
         ("1 as", "1 as"),
         ("10zs", "10 zs"),
+        # Nonstandard magnitudes are permitted, though beware that some tools
+        # mishandle them.
+        ("2 us", "2 us"),
+        ((244, "ns"), "244 ns"),
     ],
 )
 def test_vcd_timescales(
@@ -54,10 +58,12 @@ def test_vcd_timescales(
 @pytest.mark.parametrize(
     "timescale, exc_type",
     [
-        ("2 us", ValueError),
         ("1 Gs", ValueError),
+        ("0 ns", ValueError),
         ((), ValueError),
         (("1", "ns"), ValueError),
+        ((0, "ns"), ValueError),
+        ((-1, "ns"), ValueError),
         ((1, "us", "ns"), ValueError),
         (100, TypeError),
     ],

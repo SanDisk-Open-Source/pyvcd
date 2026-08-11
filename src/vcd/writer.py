@@ -22,7 +22,7 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
-from vcd.common import ScopeType, Timescale, TimescaleMagnitude, TimescaleUnit, VarType
+from vcd.common import ScopeType, Timescale, TimescaleUnit, VarType
 
 
 class VCDPhaseError(Exception):
@@ -57,7 +57,9 @@ class VCDWriter:
     :param file file: A file-like object to write the VCD data.
     :param timescale:
         Scale of the VCD timestamps. The timescale may either be a string or a tuple
-        containing an (int, str) pair.
+        containing an (int, str) pair. IEEE 1800-2023 allows only the magnitudes 1,
+        10, and 100; other positive magnitudes are accepted, but beware that some
+        tools mishandle the resulting nonstandard timescales.
     :type timescale: str, tuple
     :param str date: Optional `$date` string used in the VCD header.
     :param str comment: Optional `$comment` string used in the VCD header.
@@ -393,7 +395,9 @@ class VCDWriter:
             if len(timescale) != 2:
                 raise ValueError(f"Invalid timescale {timescale}")  # pyright: ignore[reportUnreachable]
             mag, unit = timescale
-            return str(Timescale(TimescaleMagnitude(mag), TimescaleUnit(unit)))
+            if not isinstance(mag, int) or mag < 1:  # pyright: ignore[reportUnnecessaryIsInstance]
+                raise ValueError(f"Invalid timescale magnitude {mag!r}")
+            return str(Timescale(mag, TimescaleUnit(unit)))
         elif isinstance(timescale, str):  # pyright: ignore[reportUnnecessaryIsInstance]
             return str(Timescale.from_str(timescale))
         else:

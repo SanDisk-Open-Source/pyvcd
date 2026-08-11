@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import NamedTuple
 
 # The checker is configured for the oldest supported version, so it sees only
@@ -98,8 +98,14 @@ class VarType(Enum):
         return self.value
 
 
-class TimescaleMagnitude(Enum):
-    """Valid timescale magnitudes."""
+class TimescaleMagnitude(IntEnum):
+    """Timescale magnitudes specified by IEEE 1800-2023.
+
+    Retained for backwards compatibility and convenience:
+    :attr:`Timescale.magnitude` is a plain :class:`int`, and these
+    members compare equal to their integer values.
+
+    """
 
     one = 1
     ten = 10
@@ -126,28 +132,31 @@ class TimescaleUnit(Enum):
 
 
 class Timescale(NamedTuple):
-    """Timescale magnitude and unit."""
+    """Timescale magnitude and unit.
 
-    magnitude: TimescaleMagnitude
+    IEEE 1800-2023 allows only the magnitudes 1, 10, and 100, but
+    nonstandard magnitudes appear in the wild and are accepted by both
+    the reader and the writer. Beware that some tools mishandle
+    nonstandard magnitudes; notably, VCD to FST conversion silently
+    treats them as 1.
+
+    """
+
+    magnitude: int
     unit: TimescaleUnit
 
     @classmethod
     def from_str(cls, s: str) -> Timescale:
         for unit in TimescaleUnit:
             if s == unit.value:
-                mag = TimescaleMagnitude(1)
-                break
-        else:
-            for mag in reversed(TimescaleMagnitude):
-                mag_str = str(mag.value)
-                if s.startswith(mag_str):
-                    unit_str = s[len(mag_str) :].lstrip(" ")
-                    unit = TimescaleUnit(unit_str)
-                    break
-            else:
-                raise ValueError(f"Invalid timescale magnitude {s!r}")
-        return Timescale(mag, unit)
+                return Timescale(1, unit)
+        digits = len(s) - len(s.lstrip("0123456789"))
+        magnitude = int(s[:digits]) if digits else 0
+        if magnitude < 1:
+            raise ValueError(f"Invalid timescale magnitude {s!r}")
+        unit = TimescaleUnit(s[digits:].lstrip(" "))
+        return Timescale(magnitude, unit)
 
     @override
     def __str__(self) -> str:
-        return f"{self.magnitude.value} {self.unit.value}"
+        return f"{self.magnitude:d} {self.unit.value}"
