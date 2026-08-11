@@ -132,6 +132,7 @@ class GTKWSave:
         self._color_stack: list[GTKWColor] = [GTKWColor.normal]
         self._filter_files: list[str] = []
         self._filter_procs: list[str] = []
+        self._filter_transactions: list[str] = []
 
     def _p(self, *args: object, end: str = "\n") -> None:
         print(*args, file=self.file, end=end)
@@ -182,6 +183,15 @@ class GTKWSave:
                 self._filter_procs.append(proc_path)
                 filter_id = len(self._filter_procs)
             self._p(f"^>{filter_id} {proc_path}")
+
+    def _set_transaction_filter_proc(self, proc_path: str | None) -> None:
+        if proc_path:
+            try:
+                filter_id = 1 + self._filter_transactions.index(proc_path)
+            except ValueError:
+                self._filter_transactions.append(proc_path)
+                filter_id = len(self._filter_transactions)
+            self._p(f"^<{filter_id} {proc_path}")
 
     def comment(self, *comments: Sequence[str]) -> None:
         """Add comment line(s) to save file."""
@@ -416,6 +426,7 @@ class GTKWSave:
         extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag.none,
         translate_filter_file: str | None = None,
         translate_filter_proc: str | None = None,
+        transaction_filter_proc: str | None = None,
     ) -> None:
         """Add signal trace to save file.
 
@@ -429,6 +440,7 @@ class GTKWSave:
         :param GTKWFlag extraflags: extra flags to apply to the trace.
         :param str translate_filter_file: path to translate filter file.
         :param str translate_filter_proc: path to translate filter executable.
+        :param str transaction_filter_proc: path to transaction filter executable.
 
         .. Note::
 
@@ -464,10 +476,13 @@ class GTKWSave:
             flags |= GTKWFlag.ftranslated
         if translate_filter_proc:
             flags |= GTKWFlag.ptranslated
+        if transaction_filter_proc:
+            flags |= GTKWFlag.ttranslated
         self._set_flags(flags)
         self._set_color(color)
         self._set_translate_filter_file(translate_filter_file)
         self._set_translate_filter_proc(translate_filter_proc)
+        self._set_transaction_filter_proc(transaction_filter_proc)
         if alias:
             self._p(f"+{{{alias}}} ", end="")
         self._p(name)
@@ -484,6 +499,7 @@ class GTKWSave:
         extraflags: GTKWFlag | Sequence[str] | None = GTKWFlag.none,
         translate_filter_file: str | None = None,
         translate_filter_proc: str | None = None,
+        transaction_filter_proc: str | None = None,
     ) -> Generator[None, None, None]:
         """Contextmanager for tracing bits of a vector signal.
 
@@ -508,6 +524,7 @@ class GTKWSave:
         :param GTKWFlag extraflags: extra flags to apply to the trace.
         :param str translate_filter_file: path to translate filter file.
         :param str translate_filter_proc: path to translate filter executable.
+        :param str transaction_filter_proc: path to transaction filter executable.
 
         """
         self.trace(
@@ -520,6 +537,7 @@ class GTKWSave:
             extraflags,
             translate_filter_file,
             translate_filter_proc,
+            transaction_filter_proc,
         )
         flags = GTKWFlag.bin
         if isinstance(extraflags, GTKWFlag):

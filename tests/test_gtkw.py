@@ -306,6 +306,23 @@ def test_gtkw_trace_filter_proc(gtkw: GTKWSave):
     assert gtkw_output(gtkw) == "@4022\n^>1 filter.exe\na.b.c\n"
 
 
+def test_gtkw_trace_transaction_filter_proc(gtkw: GTKWSave):
+    gtkw.trace("mod.a", transaction_filter_proc="filter1.exe")
+    gtkw.trace("mod.b", transaction_filter_proc="filter2.exe")
+    gtkw.trace("mod.c", transaction_filter_proc="filter1.exe")
+    lines = gtkw_output(gtkw).splitlines()
+
+    assert lines == [
+        "@10000022",
+        "^<1 filter1.exe",
+        "mod.a",
+        "^<2 filter2.exe",
+        "mod.b",
+        "^<1 filter1.exe",
+        "mod.c",
+    ]
+
+
 def test_gtkw_trace_bits(gtkw: GTKWSave):
     name = "a.b.c[3:0]"
     with gtkw.trace_bits(name):
