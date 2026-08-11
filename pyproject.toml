@@ -51,6 +51,9 @@ source-include = [
     "tests/**",
     "tox.ini",
 ]
+source-exclude = [
+    "docs/_build/**",
+]
 
 [dependency-groups]
 test = [
