@@ -198,6 +198,23 @@ def test_vector_change():
     assert token.vector_change.value == "1X1z"
 
 
+def test_empty_vector_change() -> None:
+    # GHDL emits `b !` for zero-width variables.
+    tokens = tokenize(io.BytesIO(b"b !"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:2: Expected vector value")
+
+
+def test_nine_state_vector_change() -> None:
+    # GHDL dumps uninitialized std_logic vectors as `bUUUU`. Only the four
+    # states 0, 1, X, and Z are valid; the vector value must not be empty.
+    tokens = tokenize(io.BytesIO(b"bUUUU !"))
+    with pytest.raises(VCDParseError) as e:
+        _ = next(tokens)
+    assert str(e.value).startswith("1:2: Expected vector value")
+
+
 @pytest.mark.parametrize("buf_size", range(1, 400))
 def test_comprehensive(buf_size: int) -> None:
     vcd = """\

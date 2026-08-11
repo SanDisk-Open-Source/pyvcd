@@ -590,8 +590,10 @@ def _parse_token(s: _TokenizerState) -> Token:
                 vector.append(c)
                 c = s.advance()
             vector_value = bytes(vector).decode("ascii")
-        else:
+        elif vector:
             vector_value = int(bytes(vector), 2)
+        else:
+            raise VCDParseError(s.loc, "Expected vector value")
 
         if not _is_ws(c):
             raise VCDParseError(s.loc, "Expected whitespace after vector value")
