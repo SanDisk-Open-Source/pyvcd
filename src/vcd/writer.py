@@ -288,7 +288,8 @@ class VCDWriter:
                 f"Duplicate var {name} in scope {self._scope_sep.join(scope_tuple)}"
             )
 
-        var_str = f"$var {var.type} {var.size} {var.ident} {name} $end"
+        var_size = sum(var.size) if isinstance(var.size, Sequence) else var.size
+        var_str = f"$var {var.type} {var_size} {var.ident} {name} $end"
         self._scope_var_strs.setdefault(scope_tuple, []).append(var_str)
         scope_names.add(name)
 

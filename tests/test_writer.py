@@ -221,6 +221,45 @@ def test_vcd_aliases(capsys: pytest.CaptureFixture[str]):
     ]
 
 
+@pytest.mark.parametrize(
+    "size, value, width, expected",
+    [
+        ((2, 2), (3, 1), 4, "b1101 !"),
+        ((1, 3), (1, 5), 4, "b1101 !"),
+        ((3, 5, 8), (5, 17, 129), 16, "b1011000110000001 !"),
+    ],
+)
+def test_vcd_compound_aliases(
+    capsys: pytest.CaptureFixture[str],
+    size: CompoundSize,
+    value: CompoundValue,
+    width: int,
+    expected: str,
+) -> None:
+    with VCDWriter(sys.stdout, date="") as vcd:
+        var = vcd.register_var("top", "original", "reg", size)
+        vcd.register_alias("top", "copy", var)
+        vcd.register_alias("top.child", "copy", var)
+        vcd.change(var, 1, value)
+    assert split_lines(capsys) == [
+        "$timescale 1 us $end",
+        "$scope module top $end",
+        f"$var reg {width} ! original $end",
+        f"$var reg {width} ! copy $end",
+        "$scope module child $end",
+        f"$var reg {width} ! copy $end",
+        "$upscope $end",
+        "$upscope $end",
+        "$enddefinitions $end",
+        "#0",
+        "$dumpvars",
+        "bx !",
+        "$end",
+        "#1",
+        expected,
+    ]
+
+
 def test_vcd_scopes(capsys: pytest.CaptureFixture[str]):
     with VCDWriter(sys.stdout, date="today") as vcd:
         vcd.set_scope_type("eee.fff.ggg", ScopeType.task)
