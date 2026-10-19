@@ -218,7 +218,12 @@ class VCDWriter:
             elif not isinstance(init, (bool, int)):
                 raise ValueError("event init value must be int, bool, or None")
             var = EventVariable(ident, var_type, size, init)
-        elif var_type in [VarType.real, VarType.realtime]:
+        elif var_type in [
+            VarType.real,
+            VarType.realtime,
+            VarType.shortreal,
+            VarType.real_parameter,
+        ]:
             if init is None:
                 init = 0.0
             elif not isinstance(init, (float, int)):

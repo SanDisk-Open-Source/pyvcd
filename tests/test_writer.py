@@ -660,9 +660,19 @@ def test_vcd_real_var(capsys: pytest.CaptureFixture[str]):
     assert lines[-len(expected_last) :] == expected_last
 
 
-@pytest.mark.parametrize("var_type", ["realtime", VarType.realtime])
+@pytest.mark.parametrize(
+    "var_type",
+    [
+        "realtime",
+        VarType.realtime,
+        "shortreal",
+        VarType.shortreal,
+        "real_parameter",
+        VarType.real_parameter,
+    ],
+)
 @pytest.mark.parametrize("initial, changed", [(1, 2), (1.25, 2.5), (1, 2.5)])
-def test_vcd_realtime_var(
+def test_vcd_real_typed_var(
     capsys: pytest.CaptureFixture[str],
     var_type: str | VarType,
     initial: int | float,
@@ -675,7 +685,7 @@ def test_vcd_realtime_var(
     assert split_lines(capsys) == [
         "$timescale 1 ns $end",
         "$scope module top $end",
-        "$var realtime 64 ! elapsed $end",
+        f"$var {VarType(var_type)} 64 ! elapsed $end",
         "$upscope $end",
         "$enddefinitions $end",
         "#0",
