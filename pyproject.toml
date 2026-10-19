@@ -1,6 +1,6 @@
 [project]
 name = "pyvcd"
-version = "0.5.1"
+version = "0.5.2.dev0"
 description = "Value change dump (VCD) file support for Python"
 readme = "README.rst"
 authors = [
