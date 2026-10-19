@@ -143,8 +143,8 @@ class VCDWriter:
             for vector variable types, a tuple of int. When the size is expressed as a
             tuple, the *value* passed to :meth:`change()` must also be a tuple of same
             arity as the *size* tuple. Some variable types ('integer', 'real',
-            'realtime', and 'event') have a default size and thus *size* may be ``None``
-            for those variable types.
+            'realtime', 'real_parameter', 'shortreal', and 'event') have a default
+            size and thus *size* may be ``None`` for those variable types.
         :type size: int or tuple(int) or None
         :param init: Optional initial value; defaults to 'x'.
         :param bit_index:
@@ -188,8 +188,15 @@ class VCDWriter:
             )
 
         if size is None:
-            if var_type in [VarType.integer, VarType.real, VarType.realtime]:
+            if var_type in [
+                VarType.integer,
+                VarType.real,
+                VarType.realtime,
+                VarType.real_parameter,
+            ]:
                 size = 64
+            elif var_type == VarType.shortreal:
+                size = 32
             elif var_type in [VarType.event, VarType.string]:
                 size = 1
             else:

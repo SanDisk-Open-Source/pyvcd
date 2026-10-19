@@ -389,6 +389,27 @@ def test_vcd_missing_size():
             _ = vcd.register_var("a.b.c", "name", "wire", size=None)
 
 
+@pytest.mark.parametrize(
+    "var_type, size",
+    [
+        ("integer", 64),
+        ("real", 64),
+        ("realtime", 64),
+        ("real_parameter", 64),
+        ("shortreal", 32),
+        ("event", 1),
+        ("string", 1),
+    ],
+)
+def test_vcd_default_size(
+    capsys: pytest.CaptureFixture[str], var_type: str, size: int
+) -> None:
+    with VCDWriter(sys.stdout, date="") as vcd:
+        var = vcd.register_var("top", "name", var_type)
+        assert var.size == size
+    assert f"$var {var_type} {size} ! name $end" in split_lines(capsys)
+
+
 def test_vcd_invalid_var_type():
     with VCDWriter(sys.stdout, date="today") as vcd:
         with pytest.raises(ValueError):
