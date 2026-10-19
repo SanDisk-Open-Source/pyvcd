@@ -1,6 +1,16 @@
 Changelog
 =========
 
+pyvcd-0.5.1 (2026-10-19)
+------------------------
+* fix: declare the total bit width for aliases of compound vector variables
+  (#43, #44)
+* fix: write `realtime`, `shortreal`, and `real_parameter` variable values as
+  real numbers. `realtime` values were previously written in binary, e.g.
+  ``b1`` instead of ``r1``, and fractional values were rejected (#45)
+* feat: default sizes for `shortreal` (32) and `real_parameter` (64)
+  variables
+
 pyvcd-0.5.0 (2026-08-11)
 ------------------------
 * Breaking changes:
