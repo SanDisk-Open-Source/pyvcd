@@ -1143,3 +1143,15 @@ def test_execution_speed():
                     )
     elapsed = timeit.default_timer() - t0
     print("Elapsed:", elapsed)
+
+
+def test_vcd_dump_on_off_after_close(capsys: pytest.CaptureFixture[str]):
+    vcd = VCDWriter(sys.stdout, date="")
+    _ = vcd.register_var("a", "b", "integer")
+    vcd.close()
+    _ = capsys.readouterr()
+    with pytest.raises(VCDPhaseError):
+        vcd.dump_off(1)
+    with pytest.raises(VCDPhaseError):
+        vcd.dump_on(2)
+    assert not split_lines(capsys)
