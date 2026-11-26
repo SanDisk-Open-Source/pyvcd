@@ -11,7 +11,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
 from datetime import datetime
 from itertools import zip_longest
-from numbers import Number
+from numbers import Integral, Number
+from operator import index
 from types import TracebackType
 from typing import IO, Any, Generic, TypeVar
 
@@ -202,10 +203,20 @@ class VCDWriter:
             else:
                 raise ValueError(f"Must supply size for {var_type} var_type")
 
+        raw_sizes = size if isinstance(size, Sequence) else (size,)
+        if not raw_sizes:
+            raise ValueError("Variable size must not be empty")
+        for item in raw_sizes:
+            if not isinstance(item, Integral) or isinstance(item, bool):  # pyright: ignore[reportUnnecessaryIsInstance]
+                raise TypeError(f"Invalid variable size {item!r}")
+            if item < 1:
+                raise ValueError(f"Variable size must be positive, not {item}")
+
         if isinstance(size, Sequence):
-            size = tuple(size)
+            size = tuple(index(item) for item in size)
             var_size = sum(size)
         else:
+            size = index(size)
             var_size = size
 
         ident = _encode_identifier(self._next_var_id)

@@ -3,6 +3,7 @@
 import os
 import sys
 import timeit
+from numbers import Integral
 
 import pytest
 
@@ -1143,3 +1144,39 @@ def test_execution_speed():
                     )
     elapsed = timeit.default_timer() - t0
     print("Elapsed:", elapsed)
+
+
+@pytest.mark.parametrize(
+    "size, exc",
+    [
+        (0, ValueError),
+        (-1, ValueError),
+        ((), ValueError),
+        ((4, 0), ValueError),
+        (True, TypeError),
+        (1.5, TypeError),
+        ("8", TypeError),
+        ((4, 1.5), TypeError),
+    ],
+)
+def test_vcd_invalid_size(size: object, exc: type[Exception]):
+    with VCDWriter(sys.stdout, date="today") as vcd:
+        with pytest.raises(exc):
+            _ = vcd.register_var("a", "b", "wire", size=size)  # pyright: ignore[reportArgumentType]
+
+
+def test_vcd_integral_size(capsys: pytest.CaptureFixture[str]):
+    class Width:
+        def __index__(self) -> int:
+            return 4
+
+        def __lt__(self, other: int) -> bool:
+            return False
+
+    _ = Integral.register(Width)
+    with VCDWriter(sys.stdout, date="today") as vcd:
+        _ = vcd.register_var("a", "b", "wire", size=Width())  # pyright: ignore[reportArgumentType]
+        _ = vcd.register_var("a", "c", "wire", size=(Width(), 2))  # pyright: ignore[reportArgumentType]
+    lines = split_lines(capsys)
+    assert "$var wire 4 ! b $end" in lines
+    assert '$var wire 6 " c $end' in lines
