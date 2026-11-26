@@ -307,6 +307,8 @@ class VCDWriter:
 
     def dump_off(self, timestamp: TimeValue) -> None:
         """Suspend dumping to VCD file."""
+        if self._closed:
+            raise VCDPhaseError("Cannot dump_off() after close()")
         if self._registering:
             self._finalize_registration()
         self._set_timestamp(timestamp)
@@ -323,6 +325,8 @@ class VCDWriter:
 
     def dump_on(self, timestamp: TimeValue) -> None:
         """Resume dumping to VCD file."""
+        if self._closed:
+            raise VCDPhaseError("Cannot dump_on() after close()")
         if self._registering:
             self._finalize_registration()
         self._set_timestamp(timestamp)
